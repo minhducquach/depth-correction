@@ -1,0 +1,6 @@
+[submodule "lingbot-depth"]
+	path = lingbot-depth
+	url = https://github.com/Robbyant/lingbot-depth.git
+[submodule "metric-anything"]
+	path = metric-anything
+	url = https://github.com/metric-anything/metric-anything.git
