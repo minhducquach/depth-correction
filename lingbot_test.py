@@ -51,16 +51,16 @@ def depth_to_color_opencv(depth_map, vmin=None, vmax=None, colormap=cv2.COLORMAP
 
 # Load model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = MDMModel.from_pretrained('robbyant/lingbot-depth-pretrain-vitl-14-v0.5').to(device).half()
+model = MDMModel.from_pretrained('robbyant/lingbot-depth-pretrain-vitl-14-v0.5').to(device)
 
 model.eval()
 
 # Load and prepare inputs
-image = cv2.cvtColor(cv2.imread('/home/quachmd-admin/Bureau/depth_correction/color.png'), cv2.COLOR_BGR2RGB)
+image = cv2.cvtColor(cv2.imread('../color.png'), cv2.COLOR_BGR2RGB)
 h, w = image.shape[:2]
 # image = torch.tensor(image / 255, dtype=torch.float32, device=device).permute(2, 0, 1).unsqueeze(0)
 
-depth_np = np.load("/home/quachmd-admin/Bureau/depth_correction/depth.npy").astype(np.float32)
+depth_np = np.load("../depth.npy").astype(np.float32)
 
 # 2. Prepare Depth Tensor (Must be 4D: [Batch, Channel, Height, Width])
 # Use [None, None] to add both Batch and Channel dims
@@ -69,8 +69,17 @@ depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None, 
 # 3. Prepare Image Tensor (Already correct in your code, but keep for reference)
 image_tensor = torch.tensor(image / 255, dtype=torch.float32, device=device).permute(2, 0, 1)[None]
 
+starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+
+
 # Run inference
+starter.record()
 output = model.infer(image_tensor, depth_in=depth_tensor)
+ender.record()
+
+torch.cuda.synchronize()
+currtime = starter.elapsed_time(ender)
+print(currtime)
 
 depth_pred = output['depth'].squeeze().float().cpu().numpy()
 # points = output['points']      # 3D point cloud
