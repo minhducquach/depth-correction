@@ -1,5 +1,5 @@
 .venv/
 lingbot-depth/lingbot-venv/
 metric-anything/metric-venv/
-datasets/
+./datasets/
 knowledge-distillation/data/
