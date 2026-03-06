@@ -10,6 +10,8 @@ from PIL import Image
 import cv2
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 BASE_DIR = "/home/quachmd/Bureau/depth-correction/datasets/vkitti/"
 
 def preprocess_input_image(image_path):
@@ -60,12 +62,12 @@ def load_depth_map(depth_path, scale=1000.0):
         raise FileNotFoundError(f"Depth map not found: {depth_path}")
 
     # Read depth map as 16-bit
-    depth_map = cv2.imread(depth_path, cv2.IMREAD_UNCHANGED)
+    depth_map = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
     if depth_map is None:
         raise ValueError(f"Failed to read depth map: {depth_path}")
 
     # Convert to meters
-    depth_map = depth_map.astype(np.float32) / scale
+    depth_map = depth_map.astype(np.float32) / scale                                                    
 
     # Replace invalid values with 0
     depth_map = np.nan_to_num(depth_map, nan=0.0, posinf=0.0, neginf=0.0)
@@ -95,10 +97,22 @@ class VirtualKitti(torch.utils.data.Dataset):
         depth_path = self.depth_files[idx]
 
         color = preprocess_input_image(color_path)
-        depth = load_depth_map(depth_path)
+        depth = load_depth_map(depth_path, scale=100.0)
 
         return {
             'color': color,
             'depth': depth
         }
 
+if __name__ == '__main__':
+    dataset = VirtualKitti()
+    len_dataset = len(dataset)
+    color, depth = dataset[0]['color'], dataset[0]['depth']
+    print(color.shape, depth.shape)
+    # plt.figure(figsize=(10, 6))
+    # plt.subplot(1, 2, 1)
+    # plt.imshow(color.squeeze().permute(1,2,0))
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(depth)
+    # plt.show()
+    # print(depth.max(), depth.dtype)

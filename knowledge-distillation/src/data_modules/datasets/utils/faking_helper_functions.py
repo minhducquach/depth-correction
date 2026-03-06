@@ -40,12 +40,12 @@ def parse_depth_bin(filename, height, width, min_depth, max_depth, masks=False, 
         mask[mat == 0] = 1.0
         mask[mat != 0] = -1.0
         
-        #mat = mat.clip(min_depth, max_depth)
-        #mat = center_and_scale_depth_bin(mat, max_depth)
+        # mat = mat.clip(min_depth, max_depth)
+        # mat = center_and_scale_depth_bin(mat, max_depth)
         
         # mat = center_and_scale_depth_bin(mat, min_depth, max_depth, min_clip)
         if masks: return mat / 1000, mask
-        else: return mat
+        else: return mat / 1000
     
 def parse_depth_img(filename, height, width):
     image = Image.open(filename)

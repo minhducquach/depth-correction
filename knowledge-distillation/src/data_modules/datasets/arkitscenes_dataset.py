@@ -9,6 +9,10 @@ import pandas as pd
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
+import matplotlib.pyplot as plt
+
+BASE_DIR = "/home/quachmd/Bureau/depth-correction/datasets/arkitscenes/upsampling"
+
 META_DATA_CSV_FILE = 'metadata.csv'
 WIDE = 'wide'
 LOW_RES = (192, 256)
@@ -161,8 +165,21 @@ class ARKitScenesDataset(Dataset):
             
         return {
             'color': sample[COLOR_IMG], 
-            'depth': sample[LOW_RES_DEPTH_IMG]
+            'depth': torch.Tensor.numpy(sample[LOW_RES_DEPTH_IMG].squeeze())
         }
 
     def __len__(self) -> int:
         return len(self.samples)
+    
+if __name__ == '__main__':
+    dataset = ARKitScenesDataset(root=BASE_DIR)
+    len_dataset = len(dataset)
+    color, depth = dataset[0]['color'], dataset[0]['depth']
+    print(color.shape, depth.shape)
+    # plt.figure(figsize=(10, 6))
+    # plt.subplot(1, 2, 1)
+    # plt.imshow(color.squeeze().permute(1,2,0))
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(depth)
+    # plt.show()
+    print(color)
