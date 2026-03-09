@@ -1,0 +1,1 @@
+'encoder': {'encode_type': 'DINOv2Encoder_vlmae', 'backbone': 'dinov2_vitl14', 'intermediate_layers': 1, 'dim_out': 1024, 'strict': False, 'depth_emb_mode': 'conv_1c', 'img_depth_fuse_mode': 'cat_token'}
