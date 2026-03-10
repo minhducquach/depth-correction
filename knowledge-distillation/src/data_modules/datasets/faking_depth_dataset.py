@@ -4,7 +4,7 @@ import os
 import numpy as np
 import glob
 
-import utils.faking_helper_functions as helper
+from .utils import faking_helper_functions as helper
 
 import torchvision.transforms as transforms
 

@@ -9,7 +9,7 @@ import sys
 
 sys.path.append("../")
 
-from models.mdm.v2 import MDMModel
+from models.mdm.model.v2 import MDMModel
 
 def uniform_element_selection(wt, s_shape):
     assert wt.dim() == len(s_shape), "Tensors have different number of dimensions"
@@ -40,7 +40,7 @@ def main(args):
 
     pretrained_teacher = 'robbyant/lingbot-depth-pretrain-vitl-14-v0.5'
     teacher = MDMModel.from_pretrained(pretrained_teacher).to(device='cuda')
-    student = MDMModel.from_pretrained_config(pretrained_teacher).to(device='cuda')
+    student = MDMModel.from_pretrained_config().to(device='cuda')
 
     teacher_weights = teacher.state_dict()
     student_weights = student.state_dict()

@@ -95,10 +95,7 @@ class NYUv2(torch.utils.data.Dataset):
     def __getitem__(self, index):
         color_path = self.color_files[index]
         depth_path = self.depth_files[index]
-
-        print("Color path: ", color_path)
-        print("\nDepth path: ", depth_path)
-
+        
         color = preprocess_input_image(color_path)
         depth = load_depth_map(depth_path, scale=100.0)
 

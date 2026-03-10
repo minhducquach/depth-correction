@@ -91,27 +91,14 @@ class MDMModel(nn.Module):
     
     @classmethod
     def from_pretrained_config(
-        cls, 
-        pretrained_model_name_or_path: Union[str, Path, IO[bytes]] = 'robbyant/lingbot-depth-pretrain-vitl-14-v0.5',
+        cls,
         model_kwargs: Optional[Dict[str, Any]] = None, 
         **hf_kwargs) -> 'MDMModel':
-        if Path(pretrained_model_name_or_path).exists():
-            checkpoint_path = pretrained_model_name_or_path
-        else:
-            checkpoint_path = hf_hub_download(
-                repo_id=pretrained_model_name_or_path,
-                repo_type="model",
-                filename="model.pt",
-                **hf_kwargs
-            )
-        checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
-        
-        model_config = checkpoint['model_config']
-        model_config['encoder'] = {'encode_type': 'DINOv2Encoder_vlmae', 'backbone': 'dinov2_vittiny14', 'intermediate_layers': 1, 'dim_out': 1024, 'strict': False, 'depth_emb_mode': 'conv_1c', 'img_depth_fuse_mode': 'cat_token'}
+        model_config = {'encoder': {'encode_type': 'DINOv2Encoder_vlmae', 'backbone': 'dinov2_vittiny14', 'intermediate_layers': 1, 'dim_out': 192, 'strict': False, 'depth_emb_mode': 'conv_1c', 'img_depth_fuse_mode': 'cat_token'}, 'neck': {'dim_in': [194, 2, 2, 2, 2], 'dim_out': None, 'dim_res_blocks': [1024, 256, 128, 64, 32], 'num_res_blocks': [0, 2, 2, 2, 0], 'res_block_in_norm': 'none', 'res_block_hidden_norm': 'none', 'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']}, 'depth_head': {'dim_in': [1024, 256, 128, 64, 32], 'dim_out': [None, None, None, None, 1], 'dim_res_blocks': [1024, 256, 128, 64, 32], 'num_res_blocks': [0, 1, 1, 1, 0], 'res_block_in_norm': 'none', 'res_block_hidden_norm': 'none', 'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']}, 'mask_head': {'dim_in': [1024, 256, 128, 64, 32], 'dim_out': [None, None, None, None, 1], 'dim_res_blocks': [1024, 256, 128, 64, 32], 'num_res_blocks': [0, 1, 1, 1, 0], 'res_block_in_norm': 'none', 'res_block_hidden_norm': 'none', 'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']}, 'remap_output': 'exp', 'remap_depth_in': 'log', 'remap_depth_out': 'linear', 'num_tokens_range': [1200, 3600]}
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = cls(**model_config)
-        # model.load_state_dict(checkpoint['model'], strict=False)
+        model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny.pth'), strict=False)
         
         return model
             

@@ -70,7 +70,7 @@ class ARKitScenesDataset(Dataset):
 
     def __init__(
             self,
-            root: str,
+            root: str = BASE_DIR,
             split: str = 'train',
             transform: Optional[Callable] = None,
             upsample_factor: Optional[int] = None,
