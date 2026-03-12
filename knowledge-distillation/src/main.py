@@ -55,7 +55,7 @@ def main():
         log_every_n_steps=10            # Update TensorBoard every 10 batches
     )
 
-    trainer.fit(model, datamodule=datamodule)
+    trainer.fit(model, datamodule=datamodule, ckpt_path='/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/last.ckpt')
 
     trainer.test(model, datamodule=datamodule, ckpt_path="best")
 

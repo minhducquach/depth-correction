@@ -13,22 +13,22 @@ class ResizeWrapper(Dataset):
 
     def __getitem__(self, idx):
         sample = self.dataset[idx]
-        # color = torch.as_tensor(sample['color'], dtype=torch.float32)
-        # depth = torch.as_tensor(sample['depth'], dtype=torch.float32)
-        # if color.dim() == 3:
-        #     color = color.unsqueeze(0)
-        # if depth.dim() == 2:
-        #     depth = depth.unsqueeze(0).unsqueeze(0)
-        # else:
-        #     depth = depth.unsqueeze(0)
+        color = torch.as_tensor(sample['color'], dtype=torch.float32)
+        depth = torch.as_tensor(sample['depth'], dtype=torch.float32)
+        if color.dim() == 3:
+            color = color.unsqueeze(0)
+        if depth.dim() == 2:
+            depth = depth.unsqueeze(0).unsqueeze(0)
+        else:
+            depth = depth.unsqueeze(0)
 
-        # color_resized = F.interpolate(color, size=self.target_size, mode='bilinear', align_corners=False)
+        color_resized = F.interpolate(color, size=self.target_size, mode='bilinear', align_corners=False)
         
-        # depth_resized = F.interpolate(depth, size=self.target_size, mode='nearest')
+        depth_resized = F.interpolate(depth, size=self.target_size, mode='nearest')
 
-        # # Remove the fake batch dimension and put them back in the dict
-        # sample['color'] = color_resized.squeeze(0)
-        # sample['depth'] = depth_resized.squeeze(0)
+        # Remove the fake batch dimension and put them back in the dict
+        sample['color'] = color_resized.squeeze(0)
+        sample['depth'] = depth_resized.squeeze(0)
         
         return sample
 
