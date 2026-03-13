@@ -7,8 +7,8 @@ class CriterionPixelWise(nn.Module):
         self.criterion = nn.L1Loss()
 
     def forward(self, preds_S, preds_T):
-        t_tensor = preds_T['depth_reg'].detach()
-        s_tensor = preds_S['depth_reg']
+        t_tensor = preds_T.detach()
+        s_tensor = preds_S
 
         assert s_tensor.shape == t_tensor.shape, f'Output dims differ: Student {s_tensor.shape} vs Teacher {t_tensor.shape}'
 

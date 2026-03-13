@@ -7,6 +7,9 @@ import numpy as np
 
 from .mdm.model.v2 import MDMModel
 from utils.losses import CriterionPixelWise
+from utils.metrics import compute_metrics
+
+from prettytable import PrettyTable
 
 class DistillationModel(pl.LightningModule):
     def __init__(self, learning_rate=1e-5, weight_decay=0.05):
@@ -42,7 +45,7 @@ class DistillationModel(pl.LightningModule):
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "interval": "step" # Updates every batch iteration
+                "interval": "step" 
             }
         }
     
@@ -51,42 +54,108 @@ class DistillationModel(pl.LightningModule):
     
     def on_train_epoch_start(self):
         self.teacher.eval()
+
+    def _extract_and_mask_depth(self, pred_dict, apply_mask=True):
+        """Extracts depth/mask from the model dict and applies invalid pixel masking."""
+        depth_reg = pred_dict.get('depth_reg', None)
+        mask = pred_dict.get('mask', None)
+
+        if depth_reg is None:
+            return None
+
+        depth_reg = depth_reg.float()
+        
+        if mask is not None:
+            mask = mask.float()
+            mask_binary = mask > 0.5
+        else:
+            mask_binary = None
+
+        depth = depth_reg
+
+        if apply_mask and mask_binary is not None:
+            depth = torch.where(mask_binary, depth, torch.inf)
+            
+        return depth
+
+    def _get_num_tokens(self):
+        min_tokens, max_tokens = 1200, 3600
+        resolution_level = 0
+        return int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
     
     def training_step(self, batch, batch_idx):
         color = batch['color']
-        depth = batch['depth']
+        depth_in = batch['depth']
+        num_tokens = self._get_num_tokens()
 
-        pred_s = self(image=color, depth=depth)
+        raw_pred_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        depth_s = self._extract_and_mask_depth(raw_pred_s, apply_mask=False)
+
         with torch.no_grad():
-            pred_t = self.teacher(image=color, depth=depth, num_tokens=1200)
+            raw_pred_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            depth_t = self._extract_and_mask_depth(raw_pred_t, apply_mask=False)
 
-        loss = self.loss_fn(pred_s, pred_t)
+        loss = self.loss_fn(depth_s, depth_t)
 
         self.log("train_loss", loss)
         return loss
     
     def validation_step(self, batch, batch_idx):
         color = batch['color']
-        depth = batch['depth']
+        depth_in = batch['depth']
+        num_tokens = self._get_num_tokens()
 
-        pred_s = self(image=color, depth=depth)
+        # Student
+        raw_pred_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        depth_s = self._extract_and_mask_depth(raw_pred_s, apply_mask=False)
+
+        # Teacher
         with torch.no_grad():
-            pred_t = self.teacher(image=color, depth=depth, num_tokens=1200)
+            raw_pred_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            depth_t = self._extract_and_mask_depth(raw_pred_t, apply_mask=False)
 
-        loss = self.loss_fn(pred_s, pred_t)
-
+        loss = self.loss_fn(depth_s, depth_t)
         self.log("validation_loss", loss)
+
+        # metrics_dict = compute_metrics(depth_s, depth_t) 
+        
+        # for metric_name, metric_value in metrics_dict.items():
+        #     self.log(
+        #         f"val/{metric_name}",
+        #         metric_value, 
+        #         on_step=False,   
+        #         on_epoch=True,   
+        #         sync_dist=True,
+        #         batch_size=color.size(0)
+        #     )
+        
         return loss
     
     def test_step(self, batch, batch_idx):
         color = batch['color']
-        depth = batch['depth']
+        depth_in = batch['depth']
+        num_tokens = self._get_num_tokens()
 
-        pred_s = self(image=color, depth=depth)
+        raw_pred_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        depth_s = self._extract_and_mask_depth(raw_pred_s, apply_mask=False)
+
         with torch.no_grad():
-            pred_t = self.teacher(image=color, depth=depth, num_tokens=1200)
+            raw_pred_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            depth_t = self._extract_and_mask_depth(raw_pred_t, apply_mask=False)
 
-        loss = self.loss_fn(pred_s, pred_t)
-
+        loss = self.loss_fn(depth_s, depth_t)
         self.log("test_loss", loss)
+
+        # metrics_dict = compute_metrics(depth_s, depth_t)
+
+        # for metric_name, metric_value in metrics_dict.items():
+        #     self.log(
+        #         f"test/{metric_name}", 
+        #         metric_value, 
+        #         on_step=False,   
+        #         on_epoch=True,   
+        #         sync_dist=True,
+        #         batch_size=color.size(0)
+        #     )
+
         return loss

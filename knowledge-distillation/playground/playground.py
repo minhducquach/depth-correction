@@ -6,10 +6,10 @@ sys.path.append("../")
 
 from src.models.mdm.model.v2 import MDMModel
 
-depth_raw = np.load("/home/quachmd-admin/Bureau/depth_correction/depth.npy")
-depth_refined = np.load("/home/quachmd-admin/Bureau/depth_correction/lingbot-depth/test/depth_refined.npy")
+depth_raw = np.load("/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy")
+depth_refined = np.load("/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/depth_ref.npy")
 
-print(depth_raw)
+print(depth_raw / 1000.0)
 print(depth_refined)
 
 # norm_raw = np.linalg.norm(depth_raw)

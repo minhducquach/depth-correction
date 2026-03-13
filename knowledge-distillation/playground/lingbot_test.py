@@ -16,7 +16,7 @@ import torch
 torch.cuda.empty_cache()
 
 
-def depth_to_color_opencv(depth_map, vmin=None, vmax=None, colormap=cv2.COLORMAP_TURBO):
+def depth_to_color_opencv(depth_map, vmin=0, vmax=50, colormap=cv2.COLORMAP_TURBO):
     """
     Convert depth map to color visualization using OpenCV colormap.
 
@@ -40,11 +40,15 @@ def depth_to_color_opencv(depth_map, vmin=None, vmax=None, colormap=cv2.COLORMAP
     if vmax is None:
         vmax = depth_clean[valid_mask].max() if valid_mask.any() else 1
 
+    # print(vmin, vmax)
+
     # Normalize to [0, 255]
     depth_normalized = np.clip(
         (depth_clean - vmin) / (vmax - vmin + 1e-8) * 255,
         0, 255
     ).astype(np.uint8)
+
+    # print(depth_normalized)
 
     # Apply colormap
     depth_colored = cv2.applyColorMap(depth_normalized, colormap)
@@ -61,7 +65,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = MDMModel.from_pretrained_config()
 
 # 2. Load the raw Lightning checkpoint dictionary
-checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=24-validation_loss=0.6810.ckpt', map_location='cpu')
+checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/vanilla_b=12/mdm-distill-epoch=32-validation_loss=0.6226.ckpt', map_location='cpu')
 
 # 3. Extract just the "state_dict" containing the weights
 lightning_state_dict = checkpoint["state_dict"]
@@ -87,16 +91,17 @@ model2.eval()
 
 # Load and prepare inputs
 # image = cv2.cvtColor(cv2.imread('./color.png'), cv2.COLOR_BGR2RGB)
-image = cv2.cvtColor(cv2.imread('/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/r-1316653580.552634-1318500909.png'), cv2.COLOR_BGR2RGB)
+image = cv2.cvtColor(cv2.imread('/home/quachmd/Bureau/depth-correction/datasets/vkitti/vkitti_2.0.3_rgb/Scene06/15-deg-left/frames/rgb/Camera_0/rgb_00000.jpg'), cv2.COLOR_BGR2RGB)
 h, w = image.shape[:2]
 # image = torch.tensor(image / 255, dtype=torch.float32, device=device).permute(2, 0, 1).unsqueeze(0)
 
-depth_np = np.load("./depth.npy").astype(np.float32)
+# depth_np = np.load("/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy").astype(np.float32) / 1000.0
+# print(depth_np)
 
 # 2. Prepare Depth Tensor (Must be 4D: [Batch, Channel, Height, Width])
 # Use [None, None] to add both Batch and Channel dims
 # depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None, None]
-depth = cv2.imread('/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/d-1316653580.544897-1318140568.png', cv2.IMREAD_UNCHANGED).astype(np.float32) / 100.0
+depth = cv2.imread('/home/quachmd/Bureau/depth-correction/datasets/vkitti/vkitti_2.0.3_depth/Scene06/15-deg-left/frames/depth/Camera_0/depth_00000.png', cv2.IMREAD_UNCHANGED).astype(np.float32) / 100.0
 depth_tensor = torch.tensor(depth, dtype=torch.float32, device=device)[None]
 
 # 3. Prepare Image Tensor (Already correct in your code, but keep for reference)
@@ -121,7 +126,7 @@ depth_pred = output1['depth'].squeeze().float().cpu().numpy()
 depth_ref = output2['depth'].squeeze().float().cpu().numpy()
 # points = output['points']      # 3D point cloud
 
-print(depth_ref.shape, depth_ref.shape)
+# print(depth_pred, depth_ref)
 
 # Save results
 # 1. Save depth maps as numpy arrays

@@ -27,9 +27,10 @@ def main():
     # The fast_dev_run=True flag is the magic trick here!
     trainer = pl.Trainer(
         fast_dev_run=True,  # Runs 1 train batch and 1 val batch to catch bugs
-        accelerator="cpu", # Automatically uses GPU if available
+        accelerator="cuda", # Automatically uses GPU if available
         devices=1,           # Test on a single device first
-        accumulate_grad_batches=4
+        accumulate_grad_batches=4,
+        precision="bf16-mixed"
     )
 
     print("Starting test run...")
