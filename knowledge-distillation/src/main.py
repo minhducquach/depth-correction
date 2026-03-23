@@ -21,6 +21,7 @@ def main():
 
     print("Initializing Distillation Model...")
     model = DistillationModel(learning_rate=1e-4)
+    # model.compile(mode='default')
 
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints/",
@@ -49,13 +50,13 @@ def main():
         accelerator="auto", 
         devices=1,
         precision="bf16-mixed",         
-        accumulate_grad_batches=16,      
+        # accumulate_grad_batches=1,      
         callbacks=[checkpoint_callback, lr_monitor, early_stop],
         logger=logger,
         log_every_n_steps=10            # Update TensorBoard every 10 batches
     )
 
-    trainer.fit(model, datamodule=datamodule, ckpt_path='/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/last.ckpt')
+    trainer.fit(model, datamodule=datamodule)
 
     trainer.test(model, datamodule=datamodule, ckpt_path="best")
 

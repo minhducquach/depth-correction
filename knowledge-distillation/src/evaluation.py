@@ -6,15 +6,24 @@ import numpy as np
 from prettytable import PrettyTable
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+# from fvcore.nn import FlopCountAnalysis
+from ptflops import get_model_complexity_info
 
 from data_modules.datamodule import MyDataModule
 from models.mdm.model.v2 import MDMModel
-from utils.metrics import compute_metrics_sum
+from utils.metrics import compute_metrics
 
 torch.cuda.empty_cache()
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/vanilla_b=12/mdm-distill-epoch=32-validation_loss=0.6226.ckpt"
+torch.manual_seed(42)
+
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/vanilla_b=12/mdm-distill-epoch=48-validation_loss=0.5087.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def get_num_tokens():
+    min_tokens, max_tokens = 1200, 3600
+    resolution_level = 9
+    return int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
 
 def depth_to_color_opencv(depth_map, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURBO):
     """
@@ -70,18 +79,21 @@ def evaluate_metrics(o_model, d_model, dataloader, device):
     d_model.eval()
     d_model.to(device)
 
+    num_tokens = get_num_tokens()
+
+    dataset = dataloader.dataset
+    len_dataset = len(dataset)
+
     # Initialize running totals
     total_metrics_o = {
-        'abs_err': 0.0, 'sq_err': 0.0, 
-        'abs_rel_err': 0.0, 'delta_1_count': 0.0
+        'mae': 0.0, 'rmse': 0.0, 
+        'abs_rel': 0.0, 'delta_1': 0.0
     }
-    total_valid_pixels_o = 0
 
     total_metrics_d = {
-        'abs_err': 0.0, 'sq_err': 0.0, 
-        'abs_rel_err': 0.0, 'delta_1_count': 0.0
+        'mae': 0.0, 'rmse': 0.0, 
+        'abs_rel': 0.0, 'delta_1': 0.0
     }
-    total_valid_pixels_d = 0
 
     with torch.autocast(device_type=device, dtype=torch.bfloat16):
         with torch.no_grad():
@@ -89,37 +101,53 @@ def evaluate_metrics(o_model, d_model, dataloader, device):
                 color = batch['color'].to(device)
                 depth = batch['depth'].to(device).squeeze()
 
-                pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=1200)['depth']
-                pred_d = d_model.infer(image=color, depth_in=depth, num_tokens=1200)['depth']
+                batch_size = depth.shape[0]
 
-                batch_sums_o, num_valid_o = compute_metrics_sum(pred_o, depth)
-                batch_sums_d, num_valid_d = compute_metrics_sum(pred_d, depth)
+                pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)
+                pred_d = d_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)
 
-                if num_valid_o > 0:
-                    total_valid_pixels_o += num_valid_o
+    #             batch_sums_o, num_valid_o = compute_metrics_sum(pred_o_depth, depth)
+    #             batch_sums_d, num_valid_d = compute_metrics_sum(pred_d_depth, depth)
+
+    #             if num_valid_o > 0:
+    #                 total_valid_pixels_o += num_valid_o
+    #                 for k in total_metrics_o.keys():
+    #                     total_metrics_o[k] += batch_sums_o[k]
+
+    #             if num_valid_d > 0:
+    #                 total_valid_pixels_d += num_valid_d
+    #                 for k in total_metrics_d.keys():
+    #                     total_metrics_d[k] += batch_sums_d[k]
+
+                for i in range(batch_size):
+                    gt_i = depth[i]
+                    
+                    pred_o_depth_i = pred_o['depth'][i]
+                    pred_d_depth_i = pred_d['depth'][i]
+
+                    metrics_o = compute_metrics(pred_o_depth_i, gt_i)
                     for k in total_metrics_o.keys():
-                        total_metrics_o[k] += batch_sums_o[k]
+                        total_metrics_o[k] += metrics_o[k]
 
-                if num_valid_d > 0:
-                    total_valid_pixels_d += num_valid_d
+                    metrics_d = compute_metrics(pred_d_depth_i, gt_i)
                     for k in total_metrics_d.keys():
-                        total_metrics_d[k] += batch_sums_d[k]
+                        total_metrics_d[k] += metrics_d[k]
 
-    mae_o = total_metrics_o['abs_err'] / total_valid_pixels_o
-    abs_rel_o = total_metrics_o['abs_rel_err'] / total_valid_pixels_o
-    delta_1_o = total_metrics_o['delta_1_count'] / total_valid_pixels_o
-    rmse_o = (total_metrics_o['sq_err'] / total_valid_pixels_o) ** 0.5
-    
+    mae_o = total_metrics_o['mae'] / len_dataset
+    abs_rel_o = total_metrics_o['abs_rel'] / len_dataset
+    delta_1_o = total_metrics_o['delta_1'] / len_dataset
+    rmse_o = (total_metrics_o['rmse'] / len_dataset)
+
     table_o = PrettyTable()
     table_o.field_names = ['Metric', 'MAE', 'RMSE', 'ABS_REL', 'DELTA_1']
     table_o.add_row(['Value', mae_o, rmse_o, abs_rel_o, delta_1_o])
 
     print(table_o)
 
-    mae_d = total_metrics_d['abs_err'] / total_valid_pixels_d
-    abs_rel_d = total_metrics_d['abs_rel_err'] / total_valid_pixels_d
-    delta_1_d = total_metrics_d['delta_1_count'] / total_valid_pixels_d
-    rmse_d = (total_metrics_d['sq_err'] / total_valid_pixels_d) ** 0.5
+    mae_d = total_metrics_d['mae'] / len_dataset
+    abs_rel_d = total_metrics_d['abs_rel'] / len_dataset
+    delta_1_d = total_metrics_d['delta_1'] / len_dataset
+    rmse_d = (total_metrics_d['rmse'] / len_dataset)
     
     table_d = PrettyTable()
     table_d.field_names = ['Metric', 'MAE', 'RMSE', 'ABS_REL', 'DELTA_1']
@@ -138,6 +166,9 @@ def evaluate_visual(o_model, d_model, dataloader, device):
     len_dataset = len(dataset)
     random_indices = torch.randint(0, len_dataset, (5, ))
 
+    num_tokens = get_num_tokens()
+    # num_tokens = 1200
+
     fig = plt.figure(figsize=(15,12))
     rows, cols = len(random_indices), 4
 
@@ -149,8 +180,8 @@ def evaluate_visual(o_model, d_model, dataloader, device):
                 color = dataset[index]['color'].to(device, dtype=torch.bfloat16)
                 depth = dataset[index]['depth'].to(device, dtype=torch.bfloat16)
 
-                pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=1200)['depth'].squeeze().float().cpu().numpy()
-                pred_d = d_model.infer(image=color, depth_in=depth, num_tokens=1200)['depth'].squeeze().float().cpu().numpy()
+                pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)['depth'].squeeze().float().cpu().numpy()
+                pred_d = d_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)['depth'].squeeze().float().cpu().numpy()
                 
                 fig.add_subplot(rows, cols, i * cols + 1)
                 color = color.squeeze(0).cpu().float().numpy()
@@ -173,11 +204,52 @@ def evaluate_visual(o_model, d_model, dataloader, device):
                 fig.add_subplot(rows, cols, i * cols + 4)
                 plt.imshow(depth_ref_color)
                 plt.axis(False)
+
     plt.tight_layout()
-    plt.savefig("depth_comparison.png", dpi=150, bbox_inches='tight')
+    plt.savefig("depth_comparison_2_bis.png", dpi=150, bbox_inches='tight')
     print("Saved visualization to 'depth_comparison.png'")
     
     plt.show()
+
+def evaluate_time_complexity(o_model, d_model, dataloader, device):
+    o_model.eval()
+    o_model.to(device)
+
+    d_model.eval()
+    d_model.to(device)
+
+    dataset = dataloader.dataset
+    input_elem = dataset[0]
+
+    num_tokens = get_num_tokens()
+    # num_tokens = 3600
+
+    def input_constructor(input_res):
+        image_input = input_elem['color'].unsqueeze(0).to(device)
+        depth_input = input_elem['depth'].to(device)
+        return dict(image=image_input, num_tokens=num_tokens, depth=depth_input)
+
+    macs_o, params_o = get_model_complexity_info(
+        o_model,
+        (1,1,1,1), 
+        input_constructor=input_constructor,
+        as_strings=True,
+        print_per_layer_stat=False
+    )
+
+    macs_d, params_d = get_model_complexity_info(
+        d_model,
+        (1,1,1,1), 
+        input_constructor=input_constructor,
+        as_strings=True,
+        print_per_layer_stat=True
+    )
+
+    print('Computational complexity of original model: ', macs_o)
+    print('Number of parameters of original model: ', params_o)
+
+    print('Computational complexity of distilled model: ', macs_d)
+    print('Number of parameters of distilled model: ', params_d)
 
 if __name__ == "__main__":
     data_module = MyDataModule()
@@ -194,10 +266,11 @@ if __name__ == "__main__":
     # distilled_model = distilled_model.to(device)
     # distilled_model.eval()
 
-    evaluate_metrics(original_model, distilled_model, test_dataset, device)
+    # evaluate_metrics(original_model, distilled_model, test_dataset, device)
 
-    evaluate_visual(original_model, distilled_model, test_dataset, device)
+    # evaluate_visual(original_model, distilled_model, test_dataset, device)
 
+    evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
 
     
 

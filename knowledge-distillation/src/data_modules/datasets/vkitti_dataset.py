@@ -8,6 +8,9 @@ import numpy as np
 from collections import namedtuple
 from PIL import Image
 import cv2
+cv2.setNumThreads(8)
+cv2.ocl.setUseOpenCL(False)
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt

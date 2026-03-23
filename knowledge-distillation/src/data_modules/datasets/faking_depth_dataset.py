@@ -10,6 +10,9 @@ import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt
 import cv2
+cv2.setNumThreads(8)
+cv2.ocl.setUseOpenCL(False)
+
 from pathlib import Path
 
 

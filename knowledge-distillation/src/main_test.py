@@ -22,6 +22,7 @@ def main():
     print("Initializing Distillation Model...")
     # Initialize your model with whatever hyperparams you want to test
     model = DistillationModel(learning_rate=1e-4)
+    # model.compile(mode='default')
 
     print("Setting up PyTorch Lightning Trainer...")
     # The fast_dev_run=True flag is the magic trick here!

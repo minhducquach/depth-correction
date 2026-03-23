@@ -3,6 +3,9 @@ from glob import glob
 from typing import Callable, Optional
 
 import cv2
+cv2.setNumThreads(8)
+cv2.ocl.setUseOpenCL(False)
+
 import numpy as np
 import torch
 import pandas as pd
@@ -10,6 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt
+
 
 BASE_DIR = "/home/quachmd/Bureau/depth-correction/datasets/arkitscenes/upsampling"
 
