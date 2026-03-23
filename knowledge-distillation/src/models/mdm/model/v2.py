@@ -98,6 +98,7 @@ class MDMModel(nn.Module):
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = cls(**model_config)
+        model.onnx_compatible_mode = True
         model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny.pth'), strict=False)
         
         return model

@@ -65,7 +65,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = MDMModel.from_pretrained_config()
 
 # 2. Load the raw Lightning checkpoint dictionary
-checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/vanilla_b=12/mdm-distill-epoch=32-validation_loss=0.6226.ckpt', map_location='cpu')
+checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=16-validation_loss=0.1362.ckpt', map_location='cpu')
 
 # 3. Extract just the "state_dict" containing the weights
 lightning_state_dict = checkpoint["state_dict"]
@@ -80,32 +80,30 @@ for key, weight in lightning_state_dict.items():
 
 # 5. Load the clean weights into the MDMModel
 model.load_state_dict(student_state_dict)
-
-model = model.to(device)
-
-# print("Student model successfully loaded!")
-model.eval()
+model.to(device)
+is_compatible = model.onnx_compatible_mode 
+print(is_compatible)
 
 model2 = MDMModel.from_pretrained().to(device)
 model2.eval()
 
 # Load and prepare inputs
 # image = cv2.cvtColor(cv2.imread('./color.png'), cv2.COLOR_BGR2RGB)
-image = cv2.cvtColor(cv2.imread('/home/quachmd/Bureau/depth-correction/datasets/vkitti/vkitti_2.0.3_rgb/Scene06/15-deg-left/frames/rgb/Camera_0/rgb_00000.jpg'), cv2.COLOR_BGR2RGB)
+image = cv2.cvtColor(cv2.imread('/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/rgb/1739893136_240500000.png'), cv2.COLOR_BGR2RGB)
 h, w = image.shape[:2]
 # image = torch.tensor(image / 255, dtype=torch.float32, device=device).permute(2, 0, 1).unsqueeze(0)
 
-# depth_np = np.load("/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy").astype(np.float32) / 1000.0
+depth_np = np.load("/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy").astype(np.float32) / 1000.0
 # print(depth_np)
 
 # 2. Prepare Depth Tensor (Must be 4D: [Batch, Channel, Height, Width])
 # Use [None, None] to add both Batch and Channel dims
-# depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None, None]
-depth = cv2.imread('/home/quachmd/Bureau/depth-correction/datasets/vkitti/vkitti_2.0.3_depth/Scene06/15-deg-left/frames/depth/Camera_0/depth_00000.png', cv2.IMREAD_UNCHANGED).astype(np.float32) / 100.0
-depth_tensor = torch.tensor(depth, dtype=torch.float32, device=device)[None]
+depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None, None].to(device)
+# depth = cv2.imread('/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy', cv2.IMREAD_UNCHANGED).astype(np.float32) / 1000.0
+#depth_tensor = torch.tensor(depth, dtype=torch.float32, device=device)[None]
 
 # 3. Prepare Image Tensor (Already correct in your code, but keep for reference)
-image_tensor = torch.tensor(image / 255, dtype=torch.float32, device=device).permute(2, 0, 1)[None]
+image_tensor = torch.tensor(image / 255, dtype=torch.float32, device=device).permute(2, 0, 1)[None].to(device)
 
 starter, ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
 
@@ -124,18 +122,20 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
 
 depth_pred = output1['depth'].squeeze().float().cpu().numpy()
 depth_ref = output2['depth'].squeeze().float().cpu().numpy()
+
+print(output1['mask'])
 # points = output['points']      # 3D point cloud
 
 # print(depth_pred, depth_ref)
 
-# Save results
+# Save results.to(device)
 # 1. Save depth maps as numpy arrays
 np.save('./depth_refined.npy', depth_pred)
 np.save('./depth_ref.npy', depth_ref)
 
-# 2. Save depth visualizations
-depth_raw_color = depth_to_color_opencv(depth)
-# depth_raw_color = depth_to_color_opencv(depth_np)
+# 2. Save depth visualizations.0
+# depth_raw_color = depth_to_color_opencv(depth)
+depth_raw_color = depth_to_color_opencv(depth_np)
 depth_pred_color = depth_to_color_opencv(depth_pred)
 depth_ref_color = depth_to_color_opencv(depth_ref)
 depth_concat = np.concatenate([depth_raw_color, depth_pred_color, depth_ref_color], axis=1)
