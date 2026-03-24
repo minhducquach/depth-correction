@@ -22,7 +22,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():
     min_tokens, max_tokens = 1200, 3600
-    resolution_level = 9
+    resolution_level = 0
     return int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
 
 def depth_to_color_opencv(depth_map, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURBO):

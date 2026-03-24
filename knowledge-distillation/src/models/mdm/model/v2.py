@@ -17,6 +17,8 @@ from .modules_rgbd_encoder import DINOv2_RGBD_Encoder
 from .modules_decoder import MLP, ConvStack
 from ..utils.geo import depth_to_pointcloud, normalized_view_plane_uv
 
+import copy
+
 
 class MDMModel(nn.Module):
     encoder: Union[DINOv2_RGBD_Encoder]
@@ -98,7 +100,6 @@ class MDMModel(nn.Module):
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = cls(**model_config)
-        model.onnx_compatible_mode = True
         model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny.pth'), strict=False)
         
         return model
@@ -132,7 +133,10 @@ class MDMModel(nn.Module):
         features, cls_token, _, _ = self.encoder(image, depth, base_h, base_w, return_class_token=True, remap_depth_in=self.remap_depth_in, **kwargs)
 
         features = features + cls_token[..., None, None]
+        return_feats = features.clone()
+
         features = [features, None, None, None, None]
+
 
         # Concat UVs for aspect ratio input
         for level in range(5):
@@ -179,7 +183,7 @@ class MDMModel(nn.Module):
         }
         return_dict = {k: v for k, v in return_dict.items() if v is not None}
 
-        return return_dict
+        return return_dict, return_feats
 
     @torch.inference_mode()
     def infer(
@@ -214,7 +218,7 @@ class MDMModel(nn.Module):
 
         # Forward pass
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16, enabled=use_fp16 and self.dtype != torch.bfloat16):
-            output = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
+            output, _ = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
         depth_reg, mask = (output.get(k, None) for k in ['depth_reg', 'mask'])
 
         # Always process the output in fp32 precision

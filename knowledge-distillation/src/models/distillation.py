@@ -84,7 +84,7 @@ class DistillationModel(pl.LightningModule):
 
     def get_num_tokens(self):
         min_tokens, max_tokens = 1200, 3600
-        resolution_level = 3
+        resolution_level = 0
         return int(min_tokens + (resolution_level / 9.0) * (max_tokens - min_tokens))
     
     def training_step(self, batch, batch_idx):
@@ -92,14 +92,16 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
-        depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
+        raw_pred_s, feat_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
+        depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
-            depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
+            raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
+            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_s['mask']
 
-        loss = self.loss_fn(depth_s, depth_t)
+        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
         # print('Train loss:', loss)
 
         self.log("train_loss", loss)
@@ -110,16 +112,16 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        # Student
-        raw_pred_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
-        depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
+        raw_pred_s, feat_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
+        depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
-        # Teacher
         with torch.no_grad():
-            raw_pred_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
-            depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
+            raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
+            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_s['mask']
 
-        loss = self.loss_fn(depth_s, depth_t)
+        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
         self.log("validation_loss", loss)
 
         # metrics_dict = compute_metrics(depth_s, depth_t) 
@@ -141,14 +143,16 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
-        depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
+        raw_pred_s, feat_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
+        depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
-            depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
+            raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
+            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_s['mask']
 
-        loss = self.loss_fn(depth_s, depth_t)
+        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
         self.log("test_loss", loss)
 
         # metrics_dict = compute_metrics(depth_s, depth_t)

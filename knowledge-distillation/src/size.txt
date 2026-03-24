@@ -1,0 +1,716 @@
+Warning! No positional inputs found for a module, assuming batch size is 1.
+Warning! No positional inputs found for a module, assuming batch size is 1.
+MDMModel(
+  20.22 M, 98.692% Params, 408.68 GMac, 99.889% MACs, 
+  (encoder): DINOv2_RGBD_Encoder(
+    5.53 M, 26.980% Params, 39.02 GMac, 9.538% MACs, 
+    (backbone): DinoVisionTransformer(
+      5.49 M, 26.799% Params, 38.89 GMac, 9.505% MACs, 
+      (patch_embed): PatchEmbed(
+        113.09 k, 0.552% Params, 405.76 MMac, 0.099% MACs, 
+        (proj): Conv2d(113.09 k, 0.552% Params, 405.76 MMac, 0.099% MACs, 3, 192, kernel_size=(14, 14), stride=(14, 14))
+        (norm): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      )
+      (depth_patch_embed): PatchEmbed(
+        37.82 k, 0.185% Params, 135.71 MMac, 0.033% MACs, 
+        (proj): Conv2d(37.82 k, 0.185% Params, 135.71 MMac, 0.033% MACs, 1, 192, kernel_size=(14, 14), stride=(14, 14))
+        (norm): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      )
+      (blocks): ModuleList(
+        (0-11): 12 x NestedTensorBlock(
+          444.86 k, 2.172% Params, 3.2 GMac, 0.781% MACs, 
+          (norm1): LayerNorm(384, 0.002% Params, 1.38 MMac, 0.000% MACs, (192,), eps=1e-06, elementwise_affine=True)
+          (attn): MemEffAttention(
+            148.22 k, 0.724% Params, 1.06 GMac, 0.260% MACs, 
+            (qkv): Linear(111.17 k, 0.543% Params, 797.85 MMac, 0.195% MACs, in_features=192, out_features=576, bias=True)
+            (attn_drop): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)
+            (proj): Linear(37.06 k, 0.181% Params, 265.95 MMac, 0.065% MACs, in_features=192, out_features=192, bias=True)
+            (proj_drop): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)
+          )
+          (ls1): LayerScale(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+          (drop_path1): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+          (norm2): LayerNorm(384, 0.002% Params, 1.38 MMac, 0.000% MACs, (192,), eps=1e-06, elementwise_affine=True)
+          (mlp): Mlp(
+            295.87 k, 1.444% Params, 2.13 GMac, 0.520% MACs, 
+            (fc1): Linear(148.22 k, 0.724% Params, 1.06 GMac, 0.260% MACs, in_features=192, out_features=768, bias=True)
+            (act): GELU(0, 0.000% Params, 5.51 MMac, 0.001% MACs, approximate='none')
+            (fc2): Linear(147.65 k, 0.721% Params, 1.06 GMac, 0.259% MACs, in_features=768, out_features=192, bias=True)
+            (drop): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)
+          )
+          (ls2): LayerScale(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+          (drop_path2): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (norm): LayerNorm(384, 0.002% Params, 1.38 MMac, 0.000% MACs, (192,), eps=1e-06, elementwise_affine=True)
+      (head): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_projections): ModuleList(
+      (0): Conv2d(37.06 k, 0.181% Params, 132.96 MMac, 0.032% MACs, 192, 192, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+  (neck): ConvStack(
+    5.31 M, 25.899% Params, 152.66 GMac, 37.313% MACs, 
+    (input_blocks): ModuleList(
+      (0): Conv2d(199.68 k, 0.975% Params, 716.45 MMac, 0.175% MACs, 194, 1024, kernel_size=(1, 1), stride=(1, 1))
+      (1): Conv2d(768, 0.004% Params, 11.02 MMac, 0.003% MACs, 2, 256, kernel_size=(1, 1), stride=(1, 1))
+      (2): Conv2d(384, 0.002% Params, 22.04 MMac, 0.005% MACs, 2, 128, kernel_size=(1, 1), stride=(1, 1))
+      (3): Conv2d(192, 0.001% Params, 44.09 MMac, 0.011% MACs, 2, 64, kernel_size=(1, 1), stride=(1, 1))
+      (4): Conv2d(96, 0.000% Params, 88.18 MMac, 0.022% MACs, 2, 32, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (resamplers): ModuleList(
+      (0): Resampler(
+        1.64 M, 8.001% Params, 12.23 GMac, 2.990% MACs, 
+        (0): ConvTranspose2d(1.05 M, 5.120% Params, 3.77 GMac, 0.920% MACs, 1024, 256, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (1): Resampler(
+        278.78 k, 1.361% Params, 10.36 GMac, 2.532% MACs, 
+        (0): ConvTranspose2d(131.2 k, 0.640% Params, 1.89 GMac, 0.462% MACs, 256, 128, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (2): Resampler(
+        69.76 k, 0.341% Params, 10.38 GMac, 2.536% MACs, 
+        (0): ConvTranspose2d(32.83 k, 0.160% Params, 1.9 GMac, 0.463% MACs, 128, 64, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (3): Resampler(
+        18.46 k, 0.090% Params, 17.02 GMac, 4.160% MACs, 
+        (0): Upsample(0, 0.000% Params, 58.79 MMac, 0.014% MACs, scale_factor=2.0, mode='bilinear')
+        (1): Conv2d(18.46 k, 0.090% Params, 16.96 GMac, 4.145% MACs, 64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+    )
+    (res_blocks): ModuleList(
+      (0): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (1): Sequential(
+        2.36 M, 11.522% Params, 33.89 GMac, 8.283% MACs, 
+        (0): ResidualConvBlock(
+          1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+        (1): ResidualConvBlock(
+          1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (2): Sequential(
+        590.34 k, 2.882% Params, 33.92 GMac, 8.291% MACs, 
+        (0): ResidualConvBlock(
+          295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+        (1): ResidualConvBlock(
+          295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (3): Sequential(
+        147.71 k, 0.721% Params, 33.98 GMac, 8.305% MACs, 
+        (0): ResidualConvBlock(
+          73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+        (1): ResidualConvBlock(
+          73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (4): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_blocks): ModuleList(
+      (0-4): 5 x Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+  )
+  (depth_head): ConvStack(
+    4.69 M, 22.906% Params, 108.5 GMac, 26.519% MACs, 
+    (input_blocks): ModuleList(
+      (0): Conv2d(1.05 M, 5.124% Params, 3.77 GMac, 0.920% MACs, 1024, 1024, kernel_size=(1, 1), stride=(1, 1))
+      (1): Conv2d(65.79 k, 0.321% Params, 944.25 MMac, 0.231% MACs, 256, 256, kernel_size=(1, 1), stride=(1, 1))
+      (2): Conv2d(16.51 k, 0.081% Params, 947.92 MMac, 0.232% MACs, 128, 128, kernel_size=(1, 1), stride=(1, 1))
+      (3): Conv2d(4.16 k, 0.020% Params, 955.27 MMac, 0.233% MACs, 64, 64, kernel_size=(1, 1), stride=(1, 1))
+      (4): Conv2d(1.06 k, 0.005% Params, 969.97 MMac, 0.237% MACs, 32, 32, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (resamplers): ModuleList(
+      (0): Resampler(
+        1.64 M, 8.001% Params, 12.23 GMac, 2.990% MACs, 
+        (0): ConvTranspose2d(1.05 M, 5.120% Params, 3.77 GMac, 0.920% MACs, 1024, 256, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (1): Resampler(
+        278.78 k, 1.361% Params, 10.36 GMac, 2.532% MACs, 
+        (0): ConvTranspose2d(131.2 k, 0.640% Params, 1.89 GMac, 0.462% MACs, 256, 128, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (2): Resampler(
+        69.76 k, 0.341% Params, 10.38 GMac, 2.536% MACs, 
+        (0): ConvTranspose2d(32.83 k, 0.160% Params, 1.9 GMac, 0.463% MACs, 128, 64, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (3): Resampler(
+        18.46 k, 0.090% Params, 17.02 GMac, 4.160% MACs, 
+        (0): Upsample(0, 0.000% Params, 58.79 MMac, 0.014% MACs, scale_factor=2.0, mode='bilinear')
+        (1): Conv2d(18.46 k, 0.090% Params, 16.96 GMac, 4.145% MACs, 64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+    )
+    (res_blocks): ModuleList(
+      (0): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (1): Sequential(
+        1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+        (0): ResidualConvBlock(
+          1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (2): Sequential(
+        295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+        (0): ResidualConvBlock(
+          295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (3): Sequential(
+        73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+        (0): ResidualConvBlock(
+          73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (4): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_blocks): ModuleList(
+      (0-3): 4 x Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (4): Conv2d(33, 0.000% Params, 30.31 MMac, 0.007% MACs, 32, 1, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+  (mask_head): ConvStack(
+    4.69 M, 22.906% Params, 108.5 GMac, 26.519% MACs, 
+    (input_blocks): ModuleList(
+      (0): Conv2d(1.05 M, 5.124% Params, 3.77 GMac, 0.920% MACs, 1024, 1024, kernel_size=(1, 1), stride=(1, 1))
+      (1): Conv2d(65.79 k, 0.321% Params, 944.25 MMac, 0.231% MACs, 256, 256, kernel_size=(1, 1), stride=(1, 1))
+      (2): Conv2d(16.51 k, 0.081% Params, 947.92 MMac, 0.232% MACs, 128, 128, kernel_size=(1, 1), stride=(1, 1))
+      (3): Conv2d(4.16 k, 0.020% Params, 955.27 MMac, 0.233% MACs, 64, 64, kernel_size=(1, 1), stride=(1, 1))
+      (4): Conv2d(1.06 k, 0.005% Params, 969.97 MMac, 0.237% MACs, 32, 32, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (resamplers): ModuleList(
+      (0): Resampler(
+        1.64 M, 8.001% Params, 12.23 GMac, 2.990% MACs, 
+        (0): ConvTranspose2d(1.05 M, 5.120% Params, 3.77 GMac, 0.920% MACs, 1024, 256, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (1): Resampler(
+        278.78 k, 1.361% Params, 10.36 GMac, 2.532% MACs, 
+        (0): ConvTranspose2d(131.2 k, 0.640% Params, 1.89 GMac, 0.462% MACs, 256, 128, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (2): Resampler(
+        69.76 k, 0.341% Params, 10.38 GMac, 2.536% MACs, 
+        (0): ConvTranspose2d(32.83 k, 0.160% Params, 1.9 GMac, 0.463% MACs, 128, 64, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (3): Resampler(
+        18.46 k, 0.090% Params, 17.02 GMac, 4.160% MACs, 
+        (0): Upsample(0, 0.000% Params, 58.79 MMac, 0.014% MACs, scale_factor=2.0, mode='bilinear')
+        (1): Conv2d(18.46 k, 0.090% Params, 16.96 GMac, 4.145% MACs, 64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+    )
+    (res_blocks): ModuleList(
+      (0): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (1): Sequential(
+        1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+        (0): ResidualConvBlock(
+          1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 16.95 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 3.67 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 8.47 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (2): Sequential(
+        295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+        (0): ResidualConvBlock(
+          295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 16.96 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 7.35 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 8.47 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (3): Sequential(
+        73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+        (0): ResidualConvBlock(
+          73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 16.99 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 14.7 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 8.48 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (4): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_blocks): ModuleList(
+      (0-3): 4 x Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (4): Conv2d(33, 0.000% Params, 30.31 MMac, 0.007% MACs, 32, 1, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+)
+Computational complexity of original model:  2550.5 GMac
+Number of parameters of original model:  321.16 M
+Computational complexity of distilled model:  409.13 GMac
+Number of parameters of distilled model:  20.48 M
+
+
+Warning! No positional inputs found for a module, assuming batch size is 1.
+Warning! No positional inputs found for a module, assuming batch size is 1.
+MDMModel(
+  20.22 M, 98.692% Params, 136.68 GMac, 99.888% MACs, 
+  (encoder): DINOv2_RGBD_Encoder(
+    5.53 M, 26.980% Params, 13.05 GMac, 9.540% MACs, 
+    (backbone): DinoVisionTransformer(
+      5.49 M, 26.799% Params, 13.01 GMac, 9.508% MACs, 
+      (patch_embed): PatchEmbed(
+        113.09 k, 0.552% Params, 135.71 MMac, 0.099% MACs, 
+        (proj): Conv2d(113.09 k, 0.552% Params, 135.71 MMac, 0.099% MACs, 3, 192, kernel_size=(14, 14), stride=(14, 14))
+        (norm): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      )
+      (depth_patch_embed): PatchEmbed(
+        37.82 k, 0.185% Params, 45.39 MMac, 0.033% MACs, 
+        (proj): Conv2d(37.82 k, 0.185% Params, 45.39 MMac, 0.033% MACs, 1, 192, kernel_size=(14, 14), stride=(14, 14))
+        (norm): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      )
+      (blocks): ModuleList(
+        (0-11): 12 x NestedTensorBlock(
+          444.86 k, 2.172% Params, 1.07 GMac, 0.781% MACs, 
+          (norm1): LayerNorm(384, 0.002% Params, 460.99 KMac, 0.000% MACs, (192,), eps=1e-06, elementwise_affine=True)
+          (attn): MemEffAttention(
+            148.22 k, 0.724% Params, 355.89 MMac, 0.260% MACs, 
+            (qkv): Linear(111.17 k, 0.543% Params, 266.91 MMac, 0.195% MACs, in_features=192, out_features=576, bias=True)
+            (attn_drop): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)
+            (proj): Linear(37.06 k, 0.181% Params, 88.97 MMac, 0.065% MACs, in_features=192, out_features=192, bias=True)
+            (proj_drop): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)
+          )
+          (ls1): LayerScale(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+          (drop_path1): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+          (norm2): LayerNorm(384, 0.002% Params, 460.99 KMac, 0.000% MACs, (192,), eps=1e-06, elementwise_affine=True)
+          (mlp): Mlp(
+            295.87 k, 1.444% Params, 712.23 MMac, 0.520% MACs, 
+            (fc1): Linear(148.22 k, 0.724% Params, 355.89 MMac, 0.260% MACs, in_features=192, out_features=768, bias=True)
+            (act): GELU(0, 0.000% Params, 1.84 MMac, 0.001% MACs, approximate='none')
+            (fc2): Linear(147.65 k, 0.721% Params, 354.5 MMac, 0.259% MACs, in_features=768, out_features=192, bias=True)
+            (drop): Dropout(0, 0.000% Params, 0.0 Mac, 0.000% MACs, p=0.0, inplace=False)
+          )
+          (ls2): LayerScale(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+          (drop_path2): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (norm): LayerNorm(384, 0.002% Params, 460.99 KMac, 0.000% MACs, (192,), eps=1e-06, elementwise_affine=True)
+      (head): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_projections): ModuleList(
+      (0): Conv2d(37.06 k, 0.181% Params, 44.47 MMac, 0.032% MACs, 192, 192, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+  (neck): ConvStack(
+    5.31 M, 25.899% Params, 51.06 GMac, 37.312% MACs, 
+    (input_blocks): ModuleList(
+      (0): Conv2d(199.68 k, 0.975% Params, 239.62 MMac, 0.175% MACs, 194, 1024, kernel_size=(1, 1), stride=(1, 1))
+      (1): Conv2d(768, 0.004% Params, 3.69 MMac, 0.003% MACs, 2, 256, kernel_size=(1, 1), stride=(1, 1))
+      (2): Conv2d(384, 0.002% Params, 7.37 MMac, 0.005% MACs, 2, 128, kernel_size=(1, 1), stride=(1, 1))
+      (3): Conv2d(192, 0.001% Params, 14.75 MMac, 0.011% MACs, 2, 64, kernel_size=(1, 1), stride=(1, 1))
+      (4): Conv2d(96, 0.000% Params, 29.49 MMac, 0.022% MACs, 2, 32, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (resamplers): ModuleList(
+      (0): Resampler(
+        1.64 M, 8.001% Params, 4.09 GMac, 2.990% MACs, 
+        (0): ConvTranspose2d(1.05 M, 5.120% Params, 1.26 GMac, 0.920% MACs, 1024, 256, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (1): Resampler(
+        278.78 k, 1.361% Params, 3.47 GMac, 2.532% MACs, 
+        (0): ConvTranspose2d(131.2 k, 0.640% Params, 631.6 MMac, 0.462% MACs, 256, 128, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (2): Resampler(
+        69.76 k, 0.341% Params, 3.47 GMac, 2.536% MACs, 
+        (0): ConvTranspose2d(32.83 k, 0.160% Params, 634.06 MMac, 0.463% MACs, 128, 64, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (3): Resampler(
+        18.46 k, 0.090% Params, 5.69 GMac, 4.160% MACs, 
+        (0): Upsample(0, 0.000% Params, 19.66 MMac, 0.014% MACs, scale_factor=2.0, mode='bilinear')
+        (1): Conv2d(18.46 k, 0.090% Params, 5.67 GMac, 4.145% MACs, 64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+    )
+    (res_blocks): ModuleList(
+      (0): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (1): Sequential(
+        2.36 M, 11.522% Params, 11.33 GMac, 8.283% MACs, 
+        (0): ResidualConvBlock(
+          1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+        (1): ResidualConvBlock(
+          1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (2): Sequential(
+        590.34 k, 2.882% Params, 11.34 GMac, 8.290% MACs, 
+        (0): ResidualConvBlock(
+          295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+        (1): ResidualConvBlock(
+          295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (3): Sequential(
+        147.71 k, 0.721% Params, 11.36 GMac, 8.305% MACs, 
+        (0): ResidualConvBlock(
+          73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+        (1): ResidualConvBlock(
+          73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (4): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_blocks): ModuleList(
+      (0-4): 5 x Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+  )
+  (depth_head): ConvStack(
+    4.69 M, 22.906% Params, 36.29 GMac, 26.518% MACs, 
+    (input_blocks): ModuleList(
+      (0): Conv2d(1.05 M, 5.124% Params, 1.26 GMac, 0.920% MACs, 1024, 1024, kernel_size=(1, 1), stride=(1, 1))
+      (1): Conv2d(65.79 k, 0.321% Params, 315.8 MMac, 0.231% MACs, 256, 256, kernel_size=(1, 1), stride=(1, 1))
+      (2): Conv2d(16.51 k, 0.081% Params, 317.03 MMac, 0.232% MACs, 128, 128, kernel_size=(1, 1), stride=(1, 1))
+      (3): Conv2d(4.16 k, 0.020% Params, 319.49 MMac, 0.233% MACs, 64, 64, kernel_size=(1, 1), stride=(1, 1))
+      (4): Conv2d(1.06 k, 0.005% Params, 324.4 MMac, 0.237% MACs, 32, 32, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (resamplers): ModuleList(
+      (0): Resampler(
+        1.64 M, 8.001% Params, 4.09 GMac, 2.990% MACs, 
+        (0): ConvTranspose2d(1.05 M, 5.120% Params, 1.26 GMac, 0.920% MACs, 1024, 256, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (1): Resampler(
+        278.78 k, 1.361% Params, 3.47 GMac, 2.532% MACs, 
+        (0): ConvTranspose2d(131.2 k, 0.640% Params, 631.6 MMac, 0.462% MACs, 256, 128, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (2): Resampler(
+        69.76 k, 0.341% Params, 3.47 GMac, 2.536% MACs, 
+        (0): ConvTranspose2d(32.83 k, 0.160% Params, 634.06 MMac, 0.463% MACs, 128, 64, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (3): Resampler(
+        18.46 k, 0.090% Params, 5.69 GMac, 4.160% MACs, 
+        (0): Upsample(0, 0.000% Params, 19.66 MMac, 0.014% MACs, scale_factor=2.0, mode='bilinear')
+        (1): Conv2d(18.46 k, 0.090% Params, 5.67 GMac, 4.145% MACs, 64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+    )
+    (res_blocks): ModuleList(
+      (0): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (1): Sequential(
+        1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+        (0): ResidualConvBlock(
+          1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (2): Sequential(
+        295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+        (0): ResidualConvBlock(
+          295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (3): Sequential(
+        73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+        (0): ResidualConvBlock(
+          73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (4): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_blocks): ModuleList(
+      (0-3): 4 x Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (4): Conv2d(33, 0.000% Params, 10.14 MMac, 0.007% MACs, 32, 1, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+  (mask_head): ConvStack(
+    4.69 M, 22.906% Params, 36.29 GMac, 26.518% MACs, 
+    (input_blocks): ModuleList(
+      (0): Conv2d(1.05 M, 5.124% Params, 1.26 GMac, 0.920% MACs, 1024, 1024, kernel_size=(1, 1), stride=(1, 1))
+      (1): Conv2d(65.79 k, 0.321% Params, 315.8 MMac, 0.231% MACs, 256, 256, kernel_size=(1, 1), stride=(1, 1))
+      (2): Conv2d(16.51 k, 0.081% Params, 317.03 MMac, 0.232% MACs, 128, 128, kernel_size=(1, 1), stride=(1, 1))
+      (3): Conv2d(4.16 k, 0.020% Params, 319.49 MMac, 0.233% MACs, 64, 64, kernel_size=(1, 1), stride=(1, 1))
+      (4): Conv2d(1.06 k, 0.005% Params, 324.4 MMac, 0.237% MACs, 32, 32, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (resamplers): ModuleList(
+      (0): Resampler(
+        1.64 M, 8.001% Params, 4.09 GMac, 2.990% MACs, 
+        (0): ConvTranspose2d(1.05 M, 5.120% Params, 1.26 GMac, 0.920% MACs, 1024, 256, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (1): Resampler(
+        278.78 k, 1.361% Params, 3.47 GMac, 2.532% MACs, 
+        (0): ConvTranspose2d(131.2 k, 0.640% Params, 631.6 MMac, 0.462% MACs, 256, 128, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (2): Resampler(
+        69.76 k, 0.341% Params, 3.47 GMac, 2.536% MACs, 
+        (0): ConvTranspose2d(32.83 k, 0.160% Params, 634.06 MMac, 0.463% MACs, 128, 64, kernel_size=(2, 2), stride=(2, 2))
+        (1): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+      (3): Resampler(
+        18.46 k, 0.090% Params, 5.69 GMac, 4.160% MACs, 
+        (0): Upsample(0, 0.000% Params, 19.66 MMac, 0.014% MACs, scale_factor=2.0, mode='bilinear')
+        (1): Conv2d(18.46 k, 0.090% Params, 5.67 GMac, 4.145% MACs, 64, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+      )
+    )
+    (res_blocks): ModuleList(
+      (0): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (1): Sequential(
+        1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+        (0): ResidualConvBlock(
+          1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+          (layers): Sequential(
+            1.18 M, 5.761% Params, 5.67 GMac, 4.142% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (2): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 1.23 MMac, 0.001% MACs, )
+            (5): Conv2d(590.08 k, 2.881% Params, 2.83 GMac, 2.070% MACs, 256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (2): Sequential(
+        295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+        (0): ResidualConvBlock(
+          295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+          (layers): Sequential(
+            295.17 k, 1.441% Params, 5.67 GMac, 4.145% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (2): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 2.46 MMac, 0.002% MACs, )
+            (5): Conv2d(147.58 k, 0.720% Params, 2.83 GMac, 2.071% MACs, 128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (3): Sequential(
+        73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+        (0): ResidualConvBlock(
+          73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+          (layers): Sequential(
+            73.86 k, 0.361% Params, 5.68 GMac, 4.152% MACs, 
+            (0): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (1): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (2): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+            (3): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+            (4): ReLU(0, 0.000% Params, 4.92 MMac, 0.004% MACs, )
+            (5): Conv2d(36.93 k, 0.180% Params, 2.84 GMac, 2.073% MACs, 64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
+          )
+          (skip_connection): Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+        )
+      )
+      (4): Sequential(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+    )
+    (output_blocks): ModuleList(
+      (0-3): 4 x Identity(0, 0.000% Params, 0.0 Mac, 0.000% MACs, )
+      (4): Conv2d(33, 0.000% Params, 10.14 MMac, 0.007% MACs, 32, 1, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+)
+Computational complexity of original model:  853.21 GMac
+Number of parameters of original model:  321.16 M
+Computational complexity of distilled model:  136.84 GMac
+Number of parameters of distilled model:  20.48 M

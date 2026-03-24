@@ -32,7 +32,7 @@ def main():
         save_last=True            # Always save the latest epoch to resume easily
     )
 
-    # Logs the learning rate to TensorBoard (great for verifying your warmup/decay schedule)
+    # Logs the learning rate to TensorBoard
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
     early_stop = EarlyStopping(
@@ -56,7 +56,7 @@ def main():
         log_every_n_steps=10            # Update TensorBoard every 10 batches
     )
 
-    trainer.fit(model, datamodule=datamodule, ckpt_path="/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=16-validation_loss=0.1362.ckpt")
+    trainer.fit(model, datamodule=datamodule)
 
     trainer.test(model, datamodule=datamodule, ckpt_path="best")
 
