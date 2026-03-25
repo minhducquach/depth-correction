@@ -96,11 +96,52 @@ class MDMModel(nn.Module):
         cls,
         model_kwargs: Optional[Dict[str, Any]] = None, 
         **hf_kwargs) -> 'MDMModel':
-        model_config = {'encoder': {'encode_type': 'DINOv2Encoder_vlmae', 'backbone': 'dinov2_vittiny14', 'intermediate_layers': 1, 'dim_out': 192, 'strict': False, 'depth_emb_mode': 'conv_1c', 'img_depth_fuse_mode': 'cat_token'}, 'neck': {'dim_in': [194, 2, 2, 2, 2], 'dim_out': None, 'dim_res_blocks': [1024, 256, 128, 64, 32], 'num_res_blocks': [0, 2, 2, 2, 0], 'res_block_in_norm': 'none', 'res_block_hidden_norm': 'none', 'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']}, 'depth_head': {'dim_in': [1024, 256, 128, 64, 32], 'dim_out': [None, None, None, None, 1], 'dim_res_blocks': [1024, 256, 128, 64, 32], 'num_res_blocks': [0, 1, 1, 1, 0], 'res_block_in_norm': 'none', 'res_block_hidden_norm': 'none', 'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']}, 'mask_head': {'dim_in': [1024, 256, 128, 64, 32], 'dim_out': [None, None, None, None, 1], 'dim_res_blocks': [1024, 256, 128, 64, 32], 'num_res_blocks': [0, 1, 1, 1, 0], 'res_block_in_norm': 'none', 'res_block_hidden_norm': 'none', 'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']}, 'remap_output': 'exp', 'remap_depth_in': 'log', 'remap_depth_out': 'linear', 'num_tokens_range': [1200, 3600]}
+        model_config = {
+            'encoder': {
+                'encode_type': 'DINOv2Encoder_vlmae', 
+                'backbone': 'dinov2_vittiny14', 
+                'intermediate_layers': 1, 
+                'dim_out': 192, 
+                'strict': False, 
+                'depth_emb_mode': 'conv_1c', 
+                'img_depth_fuse_mode': 'cat_token'
+            }, 
+            'neck': {
+                'dim_in': [194, 2, 2, 2, 2], 
+                'dim_out': None, 
+                'dim_res_blocks': [192, 128, 64, 32, 16], 
+                'num_res_blocks': [0, 2, 2, 2, 0], 
+                'res_block_in_norm': 'none', 
+                'res_block_hidden_norm': 'none', 
+                'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']
+            }, 
+            'depth_head': {
+                'dim_in': [192, 128, 64, 32, 16], 
+                'dim_out': [None, None, None, None, 1], 
+                'dim_res_blocks': [192, 128, 64, 32, 16], 
+                'num_res_blocks': [0, 1, 1, 1, 0], 
+                'res_block_in_norm': 'none', 
+                'res_block_hidden_norm': 'none', 
+                'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']
+            }, 
+            'mask_head': {
+                'dim_in': [192, 128, 64, 32, 16], 
+                'dim_out': [None, None, None, None, 1], 
+                'dim_res_blocks': [192, 128, 64, 32, 16], 
+                'num_res_blocks': [0, 1, 1, 1, 0], 
+                'res_block_in_norm': 'none', 
+                'res_block_hidden_norm': 'none', 
+                'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']
+            }, 
+            'remap_output': 'exp', 
+            'remap_depth_in': 'log', 
+            'remap_depth_out': 'linear', 
+            'num_tokens_range': [1200, 3600]
+        }
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = cls(**model_config)
-        model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny.pth'), strict=False)
+        model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny_2.pth'), strict=False)
         
         return model
             

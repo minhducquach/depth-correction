@@ -426,7 +426,7 @@ def vit_tiny(patch_size=16, num_register_tokens=0, **kwargs):
         patch_size=patch_size,
         embed_dim=192,
         depth=12,
-        num_heads=6,
+        num_heads=3,
         mlp_ratio=4,
         block_fn=partial(Block, attn_class=MemEffAttention),
         num_register_tokens=num_register_tokens,

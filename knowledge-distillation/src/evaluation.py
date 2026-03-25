@@ -17,7 +17,7 @@ torch.cuda.empty_cache()
 
 torch.manual_seed(42)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/vanilla_b=12/mdm-distill-epoch=48-validation_loss=0.5087.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=07-validation_loss=0.1216.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():
@@ -256,13 +256,13 @@ if __name__ == "__main__":
     data_module.setup(stage='test')
     test_dataset = data_module.test_dataloader()
 
-    ckpt = torch.load(CKPT_PATH, map_location=device)
+    # ckpt = torch.load(CKPT_PATH, map_location=device)
 
     original_model = MDMModel.from_pretrained().to(device)
     # original_model.eval()
 
     distilled_model = MDMModel.from_pretrained_config()
-    distilled_model.load_state_dict(extract_weights_from_ckpt(ckpt))
+    # distilled_model.load_state_dict(extract_weights_from_ckpt(ckpt))
     # distilled_model = distilled_model.to(device)
     # distilled_model.eval()
 

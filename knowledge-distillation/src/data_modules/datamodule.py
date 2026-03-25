@@ -49,16 +49,16 @@ class MyDataModule(pl.LightningDataModule):
         dataset5 = ResizeWrapper(VirtualKitti(), target_size=(960, 1280))
         dataset6 = ResizeWrapper(DarkNav(), target_size=(960, 1280))
 
-        d1_train, d1_val, d1_test = torch.utils.data.random_split(dataset1, [0.8, 0.1, 0.1], generator=generator)
-        d2_train, d2_val, d2_test = torch.utils.data.random_split(dataset2, [0.8, 0.1, 0.1], generator=generator)
-        d3_train, d3_val, d3_test = torch.utils.data.random_split(dataset3, [0.8, 0.1, 0.1], generator=generator)
-        d4_train, d4_val, d4_test = torch.utils.data.random_split(dataset4, [0.8, 0.1, 0.1], generator=generator)
-        d5_train, d5_val, d5_test = torch.utils.data.random_split(dataset5, [0.8, 0.1, 0.1], generator=generator)
-        d6_train, d6_val, d6_test = torch.utils.data.random_split(dataset6, [0.8, 0.1, 0.1], generator=generator)
+        d1_train, d1_val = torch.utils.data.random_split(dataset1, [0.8, 0.2], generator=generator)
+        d2_train, d2_val = torch.utils.data.random_split(dataset2, [0.8, 0.2], generator=generator)
+        d3_train, d3_val = torch.utils.data.random_split(dataset3, [0.8, 0.2], generator=generator)
+        d4_train, d4_val = torch.utils.data.random_split(dataset4, [0.8, 0.2], generator=generator)
+        d5_train, d5_val = torch.utils.data.random_split(dataset5, [0.8, 0.2], generator=generator)
+        # d6_train, d6_val, d6_test = torch.utils.data.random_split(dataset6, [0.8, 0.1, 0.1], generator=generator)
 
-        self.train_datasets = [d1_train, d2_train, d3_train, d4_train, d5_train, d6_train]
-        self.val_datasets = [d1_val, d2_val, d3_val, d4_val, d5_val, d6_val]
-        self.test_datasets = [d1_test, d2_test, d3_test, d4_test, d5_test, d6_test]
+        self.train_datasets = [d1_train, d2_train, d3_train, d4_train, d5_train]
+        self.val_datasets = [d1_val, d2_val, d3_val, d4_val, d5_val]
+        self.test_datasets = [dataset6]
 
     def train_dataloader(self):
         combined_dataset = ConcatDataset(self.train_datasets)

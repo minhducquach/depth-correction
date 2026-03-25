@@ -37,7 +37,6 @@ class Criterion(nn.Module):
     def __init__(self):
         super().__init__()
         self.l1_loss = nn.L1Loss(reduction="none")
-        self.bce_loss = nn.BCELoss(reduction="none")
         self.dssim = DSSIM()
 
     def forward(self, pred_S, pred_T, pred_mask_S, pred_mask_T):
@@ -48,7 +47,7 @@ class Criterion(nn.Module):
         s_mask_tensor = pred_mask_S
 
         loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor) 
-        loss = t_mask_tensor * loss + 0.5 * self.l1_loss(s_mask_tensor, t_mask_tensor)
+        loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
         # valid_mask_t = torch.isfinite(t_tensor)
         # valid_mask_s = torch.isfinite(s_tensor)

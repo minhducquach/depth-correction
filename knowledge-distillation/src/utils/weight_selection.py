@@ -54,7 +54,7 @@ def main(args):
     if args.output_dir.endswith(".pt") or args.output_dir.endswith(".pth"):
         torch.save(weight_selection, os.path.join(args.output_dir))
     else:
-        torch.save(weight_selection, os.path.join(args.output_dir, f"init_tiny.pth"))
+        torch.save(weight_selection, os.path.join(args.output_dir, f"init_tiny_2.pth"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
