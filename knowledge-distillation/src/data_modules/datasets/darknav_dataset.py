@@ -39,7 +39,7 @@ def preprocess_input_image(image_path):
     if image_np is None:
         raise ValueError(f"Failed to read image: {image_path}")
 
-    image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+    # image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
 
     # Convert to tensor and normalize to [0, 1]
     image_tensor = torch.tensor(

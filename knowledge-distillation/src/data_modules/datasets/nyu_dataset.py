@@ -111,6 +111,7 @@ if __name__ == '__main__':
     len_dataset = len(dataset)
     color, depth = dataset[0]['color'], dataset[0]['depth']
     print(color.shape, depth.shape)
+    print(depth)
     # plt.figure(figsize=(10, 6))
     # plt.subplot(1, 2, 1)
     # plt.imshow(color.squeeze().permute(1,2,0))
