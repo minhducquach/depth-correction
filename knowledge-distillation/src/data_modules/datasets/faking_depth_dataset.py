@@ -6,7 +6,7 @@ import glob
 
 from .utils import faking_helper_functions as helper
 
-import torchvision.transforms as transforms
+# import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt
 import cv2

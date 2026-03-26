@@ -4,3 +4,4 @@ metric-anything/metric-venv/
 ./datasets/
 knowledge-distillation/data/
 checkpoints/
+__pycache__/

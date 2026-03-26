@@ -1,18 +1,18 @@
 import torch.utils.data
-from torchvision import transforms
+# from torchvision import transforms
 
 import os.path
 import glob
 import numpy as np
 
 from collections import namedtuple
-from PIL import Image
+# from PIL import Image
 import cv2
 cv2.setNumThreads(8)
 cv2.ocl.setUseOpenCL(False)
 from pathlib import Path
 
-import torchvision.io as io
+# import torchvision.io as io
 
 import matplotlib.pyplot as plt
 

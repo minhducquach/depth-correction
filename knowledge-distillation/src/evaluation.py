@@ -17,7 +17,11 @@ torch.cuda.empty_cache()
 
 torch.manual_seed(42)
 
+<<<<<<< Updated upstream
 CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=07-validation_loss=0.1216.ckpt"
+=======
+CKPT_PATH = "/home/quachmd/Desktop/depth-correction/knowledge-distillation/playground/mdm-distill-epoch=17-validation_loss=0.1362.ckpt"
+>>>>>>> Stashed changes
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():
@@ -251,10 +255,47 @@ def evaluate_time_complexity(o_model, d_model, dataloader, device):
     print('Computational complexity of distilled model: ', macs_d)
     print('Number of parameters of distilled model: ', params_d)
 
+def evaluate_time_complexity(o_model, d_model, device):
+    o_model.eval()
+    o_model.to(device)
+
+    d_model.eval()
+    d_model.to(device)
+
+    num_tokens = get_num_tokens()
+    # num_tokens = 3600
+
+    def input_constructor(input_res):
+        image_input = torch.rand(1,3,504,504).to(device)
+        depth_input = torch.rand(1,504,504)
+        return dict(image=image_input, num_tokens=num_tokens, depth=depth_input)
+
+    macs_o, params_o = get_model_complexity_info(
+        o_model,
+        (1,1,1,1), 
+        input_constructor=input_constructor,
+        as_strings=True,
+        print_per_layer_stat=False
+    )
+
+    macs_d, params_d = get_model_complexity_info(
+        d_model,
+        (1,1,1,1), 
+        input_constructor=input_constructor,
+        as_strings=True,
+        print_per_layer_stat=True
+    )
+
+    print('Computational complexity of original model: ', macs_o)
+    print('Number of parameters of original model: ', params_o)
+
+    print('Computational complexity of distilled model: ', macs_d)
+    print('Number of parameters of distilled model: ', params_d)
+
 if __name__ == "__main__":
-    data_module = MyDataModule()
-    data_module.setup(stage='test')
-    test_dataset = data_module.test_dataloader()
+    # data_module = MyDataModule()
+    # data_module.setup(stage='test')
+    # test_dataset = data_module.test_dataloader()
 
     # ckpt = torch.load(CKPT_PATH, map_location=device)
 
@@ -270,7 +311,8 @@ if __name__ == "__main__":
 
     # evaluate_visual(original_model, distilled_model, test_dataset, device)
 
-    evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
+    # evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
+    evaluate_time_complexity(original_model, distilled_model, device)
 
     
 

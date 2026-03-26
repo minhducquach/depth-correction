@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import pandas as pd
 from torch.utils.data import Dataset
-import torchvision.transforms as transforms
+# import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt
 
@@ -143,6 +143,7 @@ class ARKitScenesDataset(Dataset):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = image_hwc_to_chw(np.asarray(img / 255.0, np.float32))
         return torch.from_numpy(img).unsqueeze(0)
+        return img
 
     def __getitem__(self, index: int):
         """
