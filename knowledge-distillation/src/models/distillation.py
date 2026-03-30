@@ -40,7 +40,7 @@ class DistillationModel(pl.LightningModule):
             if current_step <= 2000:
                 return float(current_step) / 2000.0
             else:
-                decay_steps = (current_step - 2000) // 25000
+                decay_steps = (current_step - 2000) // 100000
                 return 0.5 ** decay_steps
 
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
@@ -99,7 +99,7 @@ class DistillationModel(pl.LightningModule):
         with torch.no_grad():
             raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
-            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_s['mask']
+            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
         loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
         # print('Train loss:', loss)
@@ -119,7 +119,7 @@ class DistillationModel(pl.LightningModule):
         with torch.no_grad():
             raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
-            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_s['mask']
+            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
         loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
         self.log("validation_loss", loss)
@@ -150,7 +150,7 @@ class DistillationModel(pl.LightningModule):
         with torch.no_grad():
             raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
-            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_s['mask']
+            depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
         loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
         self.log("test_loss", loss)

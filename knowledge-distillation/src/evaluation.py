@@ -17,7 +17,7 @@ torch.cuda.empty_cache()
 
 torch.manual_seed(42)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=07-validation_loss=0.1551.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=28-validation_loss=0.1462.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():
@@ -191,24 +191,33 @@ def evaluate_visual(o_model, d_model, dataloader, device):
                 color = np.clip(color * 255.0, 0, 255).astype(np.uint8)
                 plt.imshow(color)
                 plt.axis(False)
+                if i == 0:
+                    plt.title('RGB image')
 
                 depth_raw_color = depth_to_color_opencv(depth.squeeze().float().cpu().numpy())
                 fig.add_subplot(rows, cols, i * cols + 2)
                 plt.imshow(depth_raw_color)
                 plt.axis(False)
+                if i == 0:
+                    plt.title('Raw/Ground truth depth image')
 
                 depth_pred_color = depth_to_color_opencv(pred_d)
                 fig.add_subplot(rows, cols, i * cols + 3)
                 plt.imshow(depth_pred_color)
                 plt.axis(False)
+                if i == 0:
+                    plt.title('Student\'s depth')
 
                 depth_ref_color = depth_to_color_opencv(pred_o)
                 fig.add_subplot(rows, cols, i * cols + 4)
                 plt.imshow(depth_ref_color)
                 plt.axis(False)
+                if i == 0:
+                    plt.title('Teacher\'s depth')
+
 
     plt.tight_layout()
-    plt.savefig("depth_comparison_2_bis.png", dpi=150, bbox_inches='tight')
+    plt.savefig("../results/depth_comparison.png", dpi=150, bbox_inches='tight')
     print("Saved visualization to 'depth_comparison.png'")
     
     plt.show()
@@ -307,9 +316,9 @@ if __name__ == "__main__":
 
     # evaluate_metrics(original_model, distilled_model, test_dataset, device)
 
-    # evaluate_visual(original_model, distilled_model, test_dataset, device)
+    evaluate_visual(original_model, distilled_model, test_dataset, device)
 
-    evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
+    # evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
 
     
 

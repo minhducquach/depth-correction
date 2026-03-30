@@ -50,7 +50,7 @@ def main():
         accelerator="auto", 
         devices=1,
         precision="bf16-mixed",         
-        # accumulate_grad_batches=1,      
+        accumulate_grad_batches=2,      
         callbacks=[checkpoint_callback, lr_monitor, early_stop],
         logger=logger,
         log_every_n_steps=10            # Update TensorBoard every 10 batches
