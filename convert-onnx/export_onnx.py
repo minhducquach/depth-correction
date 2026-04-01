@@ -7,16 +7,16 @@ import numpy as np
 from models.mdm.model.v2 import MDMModel
 
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-device = 'cpu'
+device = 'cuda'
 
 model = MDMModel.from_pretrained_config()
 # 2. Load the raw Lightning checkpoint dictionary
-checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/wrong_separate_loss/mdm-distill-epoch=28-validation_loss=0.1462.ckpt')
+checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=09-validation_loss=0.1082.ckpt')
 
 # 3. Extract just the "state_dict" containing the weights
 lightning_state_dict = checkpoint["state_dict"]
 
-# 4. Filter and rename the keys to rip out just the student model
+# 4. Filter and rename the keys to rip/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=09-validation_loss=0.1082.ckpt out just the student model
 student_state_dict = {}
 for key, weight in lightning_state_dict.items():
     if key.startswith("student."):
@@ -52,15 +52,15 @@ torch.onnx.export(
     model.float(),
     (image_tensor, 1200, depth_tensor),
     output_onnx_file,
-    input_names=["image", "num_tokens", "depth"],
+    input_names=["image", "depth"],
     output_names=["depth_reg", "mask"],
-    dynamic_axes={
-        "image": {0: "batch_size", 2: "height", 3: "width"},
-        "depth": {0: "batch_size", 2: "height", 3: "width"},
-        "depth_reg": {0: "batch_size", 1: "height", 2: "width"},
-        "mask": {0: "batch_size", 1: "height", 2: "width"}
-    },
-    opset_version=23,
-    dynamo=False
+    # dynamic_axes={
+    #     "image": {0: "batch_size", 2: "height", 3: "width"},
+    #     "depth": {0: "batch_size", 2: "height", 3: "width"},
+    #     "depth_reg": {0: "batch_size", 2: "height", 3: "width"},
+    #     "mask": {0: "batch_size", 2: "height", 3: "width"}
+    # },
+    opset_version=18,
+    dynamo=True
 )
 print("save to onnx file:", output_onnx_file)

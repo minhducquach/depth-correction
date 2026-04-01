@@ -2,6 +2,54 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import onnxruntime as ort
+import tensorrt as trt
+import pycuda.driver as cuda
+import pycuda.autoinit
+
+TRT_LOGGER = trt.Logger(trt.Logger.INFO)
+
+def load_normal_engine(engine_path: str) -> trt.ICudaEngine:
+    runtime = trt.Runtime(TRT_LOGGER)
+    with open(engine_path, "rb") as plan:
+        engine = runtime.deserialize_cuda_engine(plan.read())
+        return engine
+    
+def allocate_buffer(engine):
+    inputs, outputs = [], []
+    stream = cuda.Stream()
+
+    for i in range(engine.num_io_tensors):
+        name = engine.get_tensor_name(i)
+        shape = engine.get_tensor_shape(name)
+        dtype = trt.nptype(engine.get_tensor_dtype(name))
+        volume = trt.volume(shape)
+
+        host_mem = cuda.pagelocked_empty(volume, dtype)
+        device_mem = cuda.mem_alloc(host_mem.nbytes)
+
+        if engine.get_tensor_mode(name) == trt.TensorIOMode.INPUT:
+            inputs.append({'name': name, 'host': host_mem, 'device': device_mem, 'shape': shape})
+        else:
+            outputs.append({'name': name, 'host': host_mem, 'device': device_mem, 'shape': shape})
+
+    return inputs, outputs, stream
+
+def do_inference(context, inputs, outputs, stream):
+    for inp in inputs:
+        cuda.memcpy_htod_async(inp["device"], inp["host"], stream)
+        context.set_tensor_address(inp["name"], int(inp["device"]))
+
+    for out in outputs:
+        context.set_tensor_address(out["name"], int(out["device"]))
+
+    context.execute_async_v3(stream_handle=stream.handle)
+
+    for out in outputs:
+        cuda.memcpy_dtoh_async(out["host"], out["device"], stream)
+
+    stream.synchronize()
+
+    return [out["host"] for out in outputs]
 
 def depth_to_color_opencv(depth_map, vmin=None, vmax=None, colormap=cv2.COLORMAP_TURBO):
     """
@@ -44,8 +92,8 @@ def depth_to_color_opencv(depth_map, vmin=None, vmax=None, colormap=cv2.COLORMAP
 pipe = rs.pipeline()
 cfg  = rs.config()
 
-cfg.enable_stream(rs.stream.color, 640,480, rs.format.bgr8, 30)
-cfg.enable_stream(rs.stream.depth, 640,480, rs.format.z16, 30)
+cfg.enable_stream(rs.stream.color, 848,480, rs.format.bgr8, 30)
+cfg.enable_stream(rs.stream.depth, 848,480, rs.format.z16, 30)
 
 profile = pipe.start(cfg)
 
@@ -56,7 +104,12 @@ print("Depth Scale is: " , depth_scale)
 align_to = rs.stream.color
 align = rs.align(align_to)
 
-session = ort.InferenceSession("../convert-onnx/model.onnx", providers=['CUDAExecutionProvider'])
+# session = ort.InferenceSession("../convert-onnx/model.onnx", providers=['CUDAExecutionProvider'])
+
+# engine = load_normal_engine("../convert-onnx/model.trt")
+
+engine = load_normal_engine("/home/quachmd/Bureau/depth-correction/convert-onnx/model.trt")
+context = engine.create_execution_context()
 
 while True:
     frame = pipe.wait_for_frames()
@@ -68,6 +121,8 @@ while True:
 
     depth_image = np.asanyarray(depth_frame.get_data()).astype(np.float32)
     color_image = np.asanyarray(color_frame.get_data())
+    # outputs = engine.run(inputs)
+    # print(outputs)
 
     img_np = (color_image / 255.0).astype(np.float32)
     img_np = np.transpose(img_np, (2, 0, 1))
@@ -78,15 +133,26 @@ while True:
 
     num_tokens_np = np.array(1200, dtype=np.int64)
 
-    inputs = {
+    input = {
         "image": img_np,
-        "num_tokens": num_tokens_np,
+        # "num_tokens": num_tokens_np,
         "depth": depth_np
     }
 
-    outputs = session.run(None, inputs)
-    depth_out = outputs[0].squeeze()
-    mask_out = outputs[1].squeeze()
+    inputs, outputs, stream = allocate_buffer(engine)
+
+    for inp in inputs:
+        name = inp["name"]
+        if inp["name"] in input:
+            data = input[inp["name"]]
+            if not data.flags['C_CONTIGUOUS']:
+                data = np.ascontiguousarray(data)
+            np.copyto(inp["host"], data.ravel())
+
+    results = do_inference(context, inputs, outputs, stream)
+
+    depth_out = outputs[0]["host"].reshape(480,848)
+    mask_out = outputs[1]["host"].reshape(480,848)
 
     binary_mask = mask_out > 0.5
 

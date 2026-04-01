@@ -61,10 +61,23 @@ num_tokens_np = np.array(1200, dtype=np.int64)
 
 inputs = {
     "image": img_np,
-    "num_tokens": num_tokens_np,
+    # "num_tokens": num_tokens_np,
     "depth": depth_np
 }
 
+# # 1. Look at the actual names the ONNX session expects
+# ex = session.get_inputs()
+# name_0 = ex[0].name  # This will be "image"
+# name_1 = ex[1].name  # This will be "num_tokens" (but it actually wants the depth map!)
+
+# # 2. Map your numpy arrays to those specific names
+# # We completely drop num_tokens_np because the graph already knows it's 1200
+# inputs = {
+#     name_0: img_np,      # Feed the image
+#     name_1: depth_np     # Feed the depth map into the second slot
+# }
+
+# # 3. Run it
 outputs = session.run(None, inputs)
 
 depth_out = outputs[0].squeeze()

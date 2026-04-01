@@ -56,7 +56,7 @@ def main():
         log_every_n_steps=10            # Update TensorBoard every 10 batches
     )
 
-    trainer.fit(model, datamodule=datamodule)
+    trainer.fit(model, datamodule=datamodule, ckpt_path="last")
 
     trainer.test(model, datamodule=datamodule, ckpt_path="best")
 
