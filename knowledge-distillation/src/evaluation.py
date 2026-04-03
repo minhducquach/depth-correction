@@ -15,9 +15,9 @@ from utils.metrics import compute_metrics
 
 torch.cuda.empty_cache()
 
-torch.manual_seed(42)
+torch.manual_seed(16)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=08-validation_loss=0.1196.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=23-validation_loss=0.0710.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():
@@ -217,7 +217,7 @@ def evaluate_visual(o_model, d_model, dataloader, device):
 
 
     plt.tight_layout()
-    plt.savefig("../results/depth_comparison.png", dpi=150, bbox_inches='tight')
+    plt.savefig("../results/depth_comparison_val.png", dpi=150, bbox_inches='tight')
     print("Saved visualization to 'depth_comparison.png'")
     
     plt.show()
@@ -285,7 +285,7 @@ def evaluate_time_complexity(o_model, d_model, dataloader, device):
     #     print_per_layer_stat=False
     # )
 
-    # macs_d, params_d = get_model_complexity_info(
+    # macs_d, params_d = get_model_complexity_in/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=15-validation_loss=0.0795.ckptfo(
     #     d_model,
     #     (1,1,1,1), 
     #     input_constructor=input_constructor,

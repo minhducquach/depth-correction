@@ -2,10 +2,9 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, ConcatDataset, DataLoader
 import lightning.pytorch as pl
-from .datasets import *
+from datasets import *
 import numpy as np
 import albumentations as A
-
 
 class DatasetWrapper(Dataset):
     def __init__(self, dataset, target_size=(480, 848), is_train=False):
@@ -59,6 +58,21 @@ class MyDataModule(pl.LightningDataModule):
         self.val_datasets = []
         self.test_datasets = []
 
+    def _test_len(self):
+        d1_raw = ARKitScenesDataset()
+        d2_raw = FakingDepth()
+        d3_raw = NYUv2()
+        d4_raw = TartanAir()
+        d5_raw = VirtualKitti()
+        d6_raw = DarkNav()
+
+        print("Arkit len:", len(d1_raw))
+        print("Faking len:", len(d2_raw))
+        print("NYU len:", len(d3_raw))
+        print("Tartan len:", len(d4_raw))
+        print("KITTI len:", len(d5_raw))
+        print("DarkNav len:", len(d6_raw))
+
     def setup(self, stage=None):
         generator = torch.Generator().manual_seed(42)
 
@@ -68,6 +82,13 @@ class MyDataModule(pl.LightningDataModule):
         d4_raw = TartanAir()
         d5_raw = VirtualKitti()
         d6_raw = DarkNav()
+
+        print("Arkit len:", len(d1_raw))
+        print("Faking len:", len(d2_raw))
+        print("NYU len:", len(d3_raw))
+        print("Tartan len:", len(d4_raw))
+        print("KITTI len:", len(d5_raw))
+        print("DarkNav len:", len(d6_raw))
 
         d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.8, 0.2], generator=generator)
         d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.8, 0.2], generator=generator)
@@ -85,8 +106,9 @@ class MyDataModule(pl.LightningDataModule):
             DatasetWrapper(d, target_size=self.target_size, is_train=False)
             for d in [d1_val, d2_val, d3_val, d4_val, d5_val]
         ]
-        self.test_datasets = [DatasetWrapper(d6_raw, target_size=self.target_size, is_train=False)]
+        # self.test_datasets = [DatasetWrapper(d6_raw, target_size=self.target_size, is_train=False)]
         # self.test_datasets = self.val_datasets
+        self.test_datasets = [DatasetWrapper(d3_raw, target_size=self.target_size, is_train=False)]
 
     def train_dataloader(self):
         combined_dataset = ConcatDataset(self.train_datasets)
@@ -99,3 +121,8 @@ class MyDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         combined_dataset = ConcatDataset(self.test_datasets)
         return DataLoader(combined_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, pin_memory=True, persistent_workers=True)
+    
+
+if __name__ == "__main__":
+    test = MyDataModule()
+    test._test_len()

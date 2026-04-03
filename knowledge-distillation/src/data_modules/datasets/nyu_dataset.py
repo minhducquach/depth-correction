@@ -87,9 +87,13 @@ class NYUv2(torch.utils.data.Dataset):
         
         for description in description_paths:
             with open(description, "r") as desc:
-                parts = desc.read().split(" ")
-                self.color_files.append(os.path.join(dir, parts[1]))
-                self.depth_files.append(os.path.join(dir, parts[0]))
+                for line in desc:
+                    parts = line.strip().split(" ")
+                    if len(parts) >= 2:
+                        self.color_files.append(os.path.join(dir, parts[1]))
+                        self.depth_files.append(os.path.join(dir, parts[0]))
+
+        # print(self.color_files)
 
     def __len__(self):
         return len(self.color_files)
@@ -111,7 +115,7 @@ if __name__ == '__main__':
     len_dataset = len(dataset)
     color, depth = dataset[0]['color'], dataset[0]['depth']
     print(color.shape, depth.shape)
-    print(depth)
+    print(len_dataset)
     # plt.figure(figsize=(10, 6))
     # plt.subplot(1, 2, 1)
     # plt.imshow(color.squeeze().permute(1,2,0))
