@@ -92,12 +92,12 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, feat_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        raw_pred_s, feat_s, feat_neck_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            raw_pred_t, feat_t, feat_neck_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
@@ -112,12 +112,12 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, feat_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        raw_pred_s, feat_s, feat_neck_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            raw_pred_t, feat_t, feat_neck_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
@@ -143,12 +143,12 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, feat_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        raw_pred_s, feat_s, feat_neck_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, feat_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            raw_pred_t, feat_t, feat_neck_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 

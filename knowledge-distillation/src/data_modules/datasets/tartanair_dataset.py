@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 MAX_DEPTH = 655.35
 
-BASE_DIR = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/data/tartanair"
+BASE_DIR = "/home/quachmd/Bureau/depth-correction/datasets/tartanair"
 
 def read_decode_depth(depthpath):
     depth_rgba = cv2.imread(depthpath, cv2.IMREAD_UNCHANGED)

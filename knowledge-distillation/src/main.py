@@ -26,7 +26,7 @@ def main():
     checkpoint_callback = ModelCheckpoint(
         dirpath="checkpoints/",
         filename="mdm-distill-{epoch:02d}-{validation_loss:.4f}",
-        save_top_k=3,             # Keep the top 3 best models
+        save_top_k=2,             # Keep the top 3 best models
         monitor="validation_loss", # Must match the exact key logged in validation_step
         mode="min",
         save_last=True            # Always save the latest epoch to resume easily
@@ -46,14 +46,14 @@ def main():
 
     print("Setting up PyTorch Lightning Trainer...")
     trainer = pl.Trainer(
-        max_epochs=50,                  
+        max_epochs=100,                  
         accelerator="auto", 
         devices=1,
         precision="bf16-mixed",         
         accumulate_grad_batches=2,      
         callbacks=[checkpoint_callback, lr_monitor, early_stop],
         logger=logger,
-        log_every_n_steps=10            # Update TensorBoard every 10 batches
+        log_every_n_steps=100
     )
 
     trainer.fit(model, datamodule=datamodule, ckpt_path="last")

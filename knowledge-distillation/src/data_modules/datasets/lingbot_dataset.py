@@ -14,9 +14,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-MAX_DEPTH = 655.35
-
-BASE_DIR = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/data/seungsang/data/"
+BASE_DIR = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/data/lingbot/lingbot-depth_pub/RobbyReal"
 
 def preprocess_input_image(image_path):
     """
@@ -66,8 +64,8 @@ def load_depth_map(depth_path, scale=1000.0):
         raise FileNotFoundError(f"Depth map not found: {depth_path}")
 
     # Read depth map as 16-bit
-    # depth_map = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
-    depth_map = np.load(depth_path)
+    depth_map = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+    # depth_map = np.load(depth_path)
     if depth_map is None:
         raise ValueError(f"Failed to read depth map: {depth_path}")
 
@@ -79,16 +77,16 @@ def load_depth_map(depth_path, scale=1000.0):
 
     return depth_map
 
-class Seungsang(torch.utils.data.Dataset):
+class Lingbot(torch.utils.data.Dataset):
     def __init__(self, dir=BASE_DIR):
-        search_pattern = os.path.join(dir, '**', '*.png')
+        search_pattern = os.path.join(dir, '**', 'color', '*.jpg')
         self.color_files = sorted(glob.glob(search_pattern, recursive=True))
 
         self.depth_files = []
 
         for color_path in self.color_files:
-            depth_path = color_path.replace('rgb', 'depth')
-            depth_path = depth_path.replace('.png', '.npy')
+            depth_path = color_path.replace('/color/', '/rawdepth/')
+            depth_path = depth_path.replace('.jpg', '.png')
             self.depth_files.append(depth_path)
 
     def __len__(self):
@@ -107,7 +105,7 @@ class Seungsang(torch.utils.data.Dataset):
         }
 
 if __name__ == '__main__':
-    dataset = Seungsang()
+    dataset = Lingbot()
     len_dataset = len(dataset)
     color, depth = dataset[0]['color'], dataset[0]['depth']
     print(color.shape, depth.shape)
@@ -118,4 +116,3 @@ if __name__ == '__main__':
     # plt.subplot(1, 2, 2)
     # plt.imshow(depth)
     # plt.show()
-    # print(depth.dtype)

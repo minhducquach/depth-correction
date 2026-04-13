@@ -90,8 +90,11 @@ class NYUv2(torch.utils.data.Dataset):
                 for line in desc:
                     parts = line.strip().split(" ")
                     if len(parts) >= 2:
-                        self.color_files.append(os.path.join(dir, parts[1]))
-                        self.depth_files.append(os.path.join(dir, parts[0]))
+                        color_path = os.path.join(dir, parts[1])
+                        depth_path = os.path.join(dir, parts[0])
+                        if os.path.isfile(color_path) and os.path.isfile(depth_path):
+                            self.color_files.append(color_path)
+                            self.depth_files.append(depth_path)
 
         # print(self.color_files)
 

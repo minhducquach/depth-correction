@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, ConcatDataset, DataLoader
 import lightning.pytorch as pl
-from datasets import *
+from .datasets import *
 import numpy as np
 import albumentations as A
 
@@ -65,6 +65,8 @@ class MyDataModule(pl.LightningDataModule):
         d4_raw = TartanAir()
         d5_raw = VirtualKitti()
         d6_raw = DarkNav()
+        d7_raw = Seungsang()
+        d8_raw = Lingbot()
 
         print("Arkit len:", len(d1_raw))
         print("Faking len:", len(d2_raw))
@@ -72,6 +74,10 @@ class MyDataModule(pl.LightningDataModule):
         print("Tartan len:", len(d4_raw))
         print("KITTI len:", len(d5_raw))
         print("DarkNav len:", len(d6_raw))
+        print("Seungsang len:", len(d7_raw))
+        print("Lingbot len:", len(d8_raw))
+
+        print('Total: ', len(d1_raw) + len(d2_raw) + len(d3_raw) + len(d4_raw) + len(d5_raw) + len(d6_raw) + len(d7_raw) + len(d8_raw))
 
     def setup(self, stage=None):
         generator = torch.Generator().manual_seed(42)
@@ -82,33 +88,29 @@ class MyDataModule(pl.LightningDataModule):
         d4_raw = TartanAir()
         d5_raw = VirtualKitti()
         d6_raw = DarkNav()
-
-        print("Arkit len:", len(d1_raw))
-        print("Faking len:", len(d2_raw))
-        print("NYU len:", len(d3_raw))
-        print("Tartan len:", len(d4_raw))
-        print("KITTI len:", len(d5_raw))
-        print("DarkNav len:", len(d6_raw))
+        d7_raw = Seungsang()
+        d8_raw = Lingbot()
 
         d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.8, 0.2], generator=generator)
         d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.8, 0.2], generator=generator)
         d3_train, d3_val = torch.utils.data.random_split(d3_raw, [0.8, 0.2], generator=generator)
         d4_train, d4_val = torch.utils.data.random_split(d4_raw, [0.8, 0.2], generator=generator)
         d5_train, d5_val = torch.utils.data.random_split(d5_raw, [0.8, 0.2], generator=generator)
+        d7_train, d7_val = torch.utils.data.random_split(d7_raw, [0.8, 0.2], generator=generator)
+        d8_train, d8_val = torch.utils.data.random_split(d8_raw, [0.8, 0.2], generator=generator)
         # d6_train, d6_val, d6_test = torch.utils.data.random_split(dataset6, [0.8, 0.1, 0.1], generator=generator)
 
         self.train_datasets = [
             DatasetWrapper(d, target_size=self.target_size, is_train=True)
-            for d in [d1_train, d2_train, d3_train, d4_train, d5_train]
+            for d in [d1_train, d2_train, d3_train, d4_train, d5_train, d7_train, d8_train]
         ]
         # self.val_datasets = [d1_val, d2_val, d3_val, d4_val, d5_val]
         self.val_datasets = [
             DatasetWrapper(d, target_size=self.target_size, is_train=False)
-            for d in [d1_val, d2_val, d3_val, d4_val, d5_val]
+            for d in [d1_val, d2_val, d3_val, d4_val, d5_val, d7_val, d8_val]
         ]
         # self.test_datasets = [DatasetWrapper(d6_raw, target_size=self.target_size, is_train=False)]
-        # self.test_datasets = self.val_datasets
-        self.test_datasets = [DatasetWrapper(d3_raw, target_size=self.target_size, is_train=False)]
+        self.test_datasets = self.val_datasets
 
     def train_dataloader(self):
         combined_dataset = ConcatDataset(self.train_datasets)

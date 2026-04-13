@@ -224,7 +224,7 @@ class MDMModel(nn.Module):
         }
         return_dict = {k: v for k, v in return_dict.items() if v is not None}
 
-        return return_dict, return_feats
+        return return_dict, return_feats, features
 
     @torch.inference_mode()
     def infer(
@@ -259,7 +259,7 @@ class MDMModel(nn.Module):
 
         # Forward pass
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16, enabled=use_fp16 and self.dtype != torch.bfloat16):
-            output, _ = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
+            output, _, _ = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
         depth_reg, mask = (output.get(k, None) for k in ['depth_reg', 'mask'])
 
         # Always process the output in fp32 precision
