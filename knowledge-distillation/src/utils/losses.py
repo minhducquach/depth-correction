@@ -62,7 +62,7 @@ class Criterion(nn.Module):
         super().__init__()
         self.l1_loss = nn.L1Loss(reduction="none")
         # self.l2_loss = nn.MSELoss(reduction="none")
-        self.sobel = Sobel()
+        # self.sobel = Sobel()
         self.dssim = DSSIM()
 
     def forward(self, pred_S, pred_T, pred_mask_S, pred_mask_T):
@@ -72,23 +72,22 @@ class Criterion(nn.Module):
         t_mask_tensor = pred_mask_T.detach()
         s_mask_tensor = pred_mask_S
 
-        grad_t, grad_s = self.sobel(t_tensor, s_tensor)
-        grad_loss = self.l1_loss(grad_t, grad_s)
+        # grad_t, grad_s = self.sobel(t_tensor, s_tensor)
+        # grad_loss = self.l1_loss(grad_t, grad_s)
 
         # L1 version
-        loss = 0.85 * (self.dssim(s_tensor, t_tensor) + grad_loss) + 0.15 * self.l1_loss(s_tensor, t_tensor)
+        # loss = 0.85 * (self.dssim(s_tensor, t_tensor) + grad_loss) + 0.15 * self.l1_loss(s_tensor, t_tensor)
         # loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
-        masked_depth_loss = t_mask_tensor * loss
+        # masked_depth_loss = t_mask_tensor * loss
 
-        valid_pixels = t_mask_tensor.sum() + 1e-8
-        avg_masked_depth_loss = masked_depth_loss.sum() / valid_pixels
+        # valid_pixels = t_mask_tensor.sum() + 1e-8
+        # avg_masked_depth_loss = masked_depth_loss.sum() / valid_pixels
 
-        total_loss = avg_masked_depth_loss + self.l1_loss(s_mask_tensor, t_mask_tensor).mean()
+        # total_loss = avg_masked_depth_loss + self.l1_loss(s_mask_tensor, t_mask_tensor).mean()
 
-        # L2 version
-        # loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l2_loss(s_tensor, t_tensor) 
-        # loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
+        loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor) 
+        loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
         # valid_mask_t = torch.isfinite(t_tensor)
         # valid_mask_s = torch.isfinite(s_tensor)
@@ -102,5 +101,5 @@ class Criterion(nn.Module):
         # loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor)
         # print('Train loss:', self.dssim(s_tensor, t_tensor).mean(), self.l1_loss(s_tensor, t_tensor).mean(), loss.mean())
 
-        # return loss.mean()
-        return total_loss
+        return loss.mean()
+        # return total_loss

@@ -11,12 +11,12 @@ device = 'cuda'
 
 model = MDMModel.from_pretrained_config()
 # 2. Load the raw Lightning checkpoint dictionary
-checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=09-validation_loss=0.1082.ckpt')
+checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=05-validation_loss=0.0860.ckpt')
 
 # 3. Extract just the "state_dict" containing the weights
 lightning_state_dict = checkpoint["state_dict"]
 
-# 4. Filter and rename the keys to rip/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=09-validation_loss=0.1082.ckpt out just the student model
+# 4. Filter and rename the keys to rip out just the student model
 student_state_dict = {}
 for key, weight in lightning_state_dict.items():
     if key.startswith("student."):

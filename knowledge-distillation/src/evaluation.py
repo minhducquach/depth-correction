@@ -17,7 +17,7 @@ torch.cuda.empty_cache()
 
 torch.manual_seed(16)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=13-validation_loss=0.0647.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=17-validation_loss=0.0622.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():

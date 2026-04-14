@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 SCALE = 1.0
 
-PATH = "/home/quachmd/Bureau/depth-correction/datasets/tartanair/House/Data_omni/P0000/depth_lcam_front/000000_lcam_front_depth.png"
+PATH = "/home/quachmd/Bureau/depth-correction/datasets/tartanair/Hospital/Data_omni/P0003/depth_lcam_front/000000_lcam_front_depth.png"
 
 BASELINE = 54.8 if SCALE == 1000 else 0.0548
 FOCAL_LENGTH = 942.8
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                 if buffer[i, j_right] > (shift + 0.5):
                     imperfect_depth[i, j] = 0
             
-    imperfect_depth[depth_mat < 0.53] = 0
+    # imperfect_depth[depth_mat < 0.53] = 0
 
     depth_ori = depth_to_color_opencv(depth_mat)
     depth_sim = depth_to_color_opencv(imperfect_depth)

@@ -111,16 +111,55 @@ class TartanAir(torch.utils.data.Dataset):
             'color': color,
             'depth': depth
         }
+    
+def depth_to_color_opencv(depth_map, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURBO):
+    """
+    Convert depth map to color visualization using OpenCV colormap.
+
+    Args:
+        depth_map (np.ndarray): Depth map (H, W)
+        vmin (float): Minimum depth for colormap (auto if None)
+        vmax (float): Maximum depth for colormap (auto if None)
+        colormap: OpenCV colormap (TURBO, JET, VIRIDIS, etc.)
+
+    Returns:
+        np.ndarray: Colored depth map (H, W, 3) in BGR format
+    """
+    # Handle invalid values
+    valid_mask = np.isfinite(depth_map) & (depth_map > 0)
+    depth_clean = depth_map.copy()
+    depth_clean[~valid_mask] = 0
+
+    # Auto-range if not specified
+    if vmin is None:
+        vmin = depth_clean[valid_mask].min() if valid_mask.any() else 0
+    if vmax is None:
+        vmax = depth_clean[valid_mask].max() if valid_mask.any() else 1
+
+    # Normalize to [0, 255]
+    depth_normalized = np.clip(
+        (depth_clean - vmin) / (vmax - vmin + 1e-8) * 255,
+        0, 255
+    ).astype(np.uint8)
+
+    # Apply colormap
+    depth_colored = cv2.applyColorMap(depth_normalized, colormap)
+
+    # Set invalid pixels to black
+    depth_colored[~valid_mask] = [0, 0, 0]
+
+    return depth_colored
 
 if __name__ == '__main__':
     dataset = TartanAir()
     len_dataset = len(dataset)
     color, depth = dataset[0]['color'], dataset[0]['depth']
-    print(color.shape, depth.shape)
-    # plt.figure(figsize=(10, 6))
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(color.squeeze().permute(1,2,0))
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(depth)
-    # plt.show()
-    # print(depth.dtype)
+    depth = depth_to_color_opencv(depth)
+    # print(color.shape, depth.shape)
+    plt.figure(figsize=(10, 6))
+    plt.subplot(1, 2, 1)
+    plt.imshow(color.squeeze().permute(1,2,0))
+    plt.subplot(1, 2, 2)
+    plt.imshow(depth)
+    plt.show()
+    print(depth.dtype)
