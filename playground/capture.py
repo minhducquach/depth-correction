@@ -51,7 +51,7 @@ def do_inference(context, inputs, outputs, stream):
 
     return [out["host"] for out in outputs]
 
-def depth_to_color_opencv(depth_map, vmin=None, vmax=None, colormap=cv2.COLORMAP_TURBO):
+def depth_to_color_opencv(depth_map, vmin=0, vmax=20, colormap=cv2.COLORMAP_TURBO):
     """
     Convert depth map to color visualization using OpenCV colormap.
 
