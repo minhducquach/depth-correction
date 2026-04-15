@@ -3,6 +3,10 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 
+from numpy import random
+
+rng = np.random.default_rng(seed=42)
+
 SCALE = 1.0
 
 PATH = "/home/quachmd/Bureau/depth-correction/datasets/tartanair/Hospital/Data_omni/P0003/depth_lcam_front/000000_lcam_front_depth.png"
@@ -97,6 +101,8 @@ if __name__ == "__main__":
 
     rows, cols = depth_mat.shape
 
+    # Disparity holes
+
     # Fill in buffer for right img (left->right)
     for i in range(rows):
         for j in range(cols):
@@ -132,7 +138,50 @@ if __name__ == "__main__":
                 if buffer[i, j_right] > (shift + 0.5):
                     imperfect_depth[i, j] = 0
             
-    # imperfect_depth[depth_mat < 0.53] = 0
+    imperfect_depth[depth_mat < 0.53] = 0
+
+    # Remove vertical edges
+    sobel_edges = cv2.Sobel(imperfect_depth, cv2.CV_32F, 1, 0, ksize=7)
+    imperfect_depth[np.abs(sobel_edges) > 2048/4] = 0
+
+    # Sub-sampling noise
+    imperfect_depth_resized = cv2.resize(imperfect_depth, (cols // 3, rows // 3), interpolation=cv2.INTER_NEAREST)
+    resized_rows, resized_cols = imperfect_depth_resized.shape
+
+    for i in range(1000):
+        shift = rng.integers(1,4)
+        row = rng.integers(shift, resized_rows)
+        col = rng.integers(shift, resized_cols)
+        imperfect_depth_resized[row, col] = imperfect_depth_resized[row, col - shift]
+    imperfect_depth = cv2.resize(imperfect_depth_resized, (cols, rows), interpolation=cv2.INTER_NEAREST)
+
+    # Depth-dependent noise
+    kernel_size = 31
+    col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
+    col_kernel = col_kernel / col_kernel.max()
+    row_kernel = np.transpose(col_kernel)
+    gaussian_kernel = col_kernel * row_kernel
+
+    max_noise_power = 0.005
+
+    for i in range(5000):
+        row = rng.integers(kernel_size, rows - kernel_size)
+        col = rng.integers(kernel_size, cols - kernel_size)
+
+        noise_power = 2.0 * (rng.random() * max_noise_power) - max_noise_power
+        patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
+        noise_matrix = patch * patch * (gaussian_kernel * noise_power)
+        noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
+
+        mask = patch > 0
+        patch[mask] = patch[mask] + noise_matrix[mask]
+
+
+    hole_mask = imperfect_depth == 0
+
+    # Gaussian blur
+    imperfect_depth = cv2.GaussianBlur(imperfect_depth, (5, 5), 0)
+    imperfect_depth[hole_mask] = 0
 
     depth_ori = depth_to_color_opencv(depth_mat)
     depth_sim = depth_to_color_opencv(imperfect_depth)
