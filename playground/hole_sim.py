@@ -10,7 +10,7 @@ rng = np.random.default_rng(seed=42)
 
 SCALE = 1.0
 
-PATH = "/home/quachmd/Bureau/depth-correction/datasets/tartanair/House/Data_omni/P0000/depth_lcam_front/000010_lcam_front_depth.png"
+PATH = "/home/quachmd/Desktop/depth-correction/playground/000000_lcam_front_depth.png"
 
 BASELINE = 54.8 if SCALE == 1000 else 0.0548
 HORIZONTAL_FOV = 87
@@ -157,25 +157,8 @@ if __name__ == "__main__":
             
     imperfect_depth[imperfect_depth < 0.53] = 0
 
-    sobel_vert_edges = cv2.Sobel(imperfect_depth, cv2.CV_32F, 1, 0, ksize=7)
-    sobel_hori_edges = cv2.Sobel(imperfect_depth, cv2.CV_32F, 0, 1, ksize=7)
-
-    # Lateral noise
-    kernel_size = 31
-    col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
-    col_kernel = col_kernel / col_kernel.max()
-    row_kernel = np.transpose(col_kernel)
-    gaussian_kernel = col_kernel * row_kernel
-
-    edge_mask = edge_mask = (np.abs(sobel_vert_edges) > 2048/4) | (np.abs(sobel_hori_edges) > 2048/4)
-    edge_mask = edge_mask.astype(np.float32)
-
+    vert_edges = cv2.Sobel(imperfect_depth, cv2.CV_32F, 1, 0, ksize=7)
     
-    noise_power = 0.0432
-    noise_field = cv2.filter2D(edge_mask, -1, gaussian_kernel) * noise_power
-
-    valid_mask = imperfect_depth > 0
-    imperfect_depth[valid_mask] += noise_field[valid_mask]
     # Axial noise
     kernel_size = 51
     col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
@@ -187,94 +170,54 @@ if __name__ == "__main__":
         row = rng.integers(0, rows - kernel_size)
         col = rng.integers(0, cols - kernel_size)
 
-        noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(round(kernel_size//2-1)), col+int(round(kernel_size//2-1))] + 0.003949 * imperfect_depth[row+int(round(kernel_size//2-1)), col+int(round(kernel_size//2-1))] ** 2)
+        noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(kernel_size//2), col+int(kernel_size//2)] + 0.003949 * imperfect_depth[row+int(kernel_size//2), col+int(kernel_size//2)] ** 2)
         patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
         noise_matrix = (gaussian_kernel * noise_power)
         # noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
 
         mask = patch > 0
         patch[mask] = patch[mask] + noise_matrix[mask]
-        # noise_power = (0.001063 + 0.0007278 * imperfect_depth + 0.003949 * imperfect_depth ** 2)
-        # global_noise = np.random.normal(0, 1, size=imperfect_depth.shape)
-        # mask = imperfect_depth > 0
-        # imperfect_depth[mask] += (global_noise * noise_power)[mask]
+    
+    # Lateral noise
+    kernel_size = 3
 
-    # # Lateral Noise
-    # kernel_size = 31
-    # col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
-    # col_kernel = col_kernel / col_kernel.max()
-    # row_kernel = np.transpose(col_kernel)
-    # gaussian_kernel = col_kernel * row_kernel
+    imperfect_depth_resized = cv2.resize(imperfect_depth, (cols // 2, rows // 2), interpolation=cv2.INTER_NEAREST)
+    resized_rows, resized_cols = imperfect_depth_resized.shape
 
-    # for i in range(5000):
-    #     row = rng.integers(kernel_size, rows - kernel_size)
-    #     col = rng.integers(kernel_size, cols - kernel_size)
+    sobel_vert_edges = cv2.Sobel(imperfect_depth_resized, cv2.CV_32F, 1, 0, ksize=7)
+    sobel_hori_edges = cv2.Sobel(imperfect_depth_resized, cv2.CV_32F, 0, 1, ksize=7)
 
-    #     noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(round(kernel_size//2)), col+int(round(kernel_size//2))] + 0.003949 * imperfect_depth[row+int(round(kernel_size//2)), col+int(round(kernel_size//2))] ** 2)
-    #     patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
-    #     noise_matrix = (gaussian_kernel * noise_power)
-    #     # noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
+    edge_mask = (np.abs(sobel_vert_edges) > 2048/4) | (np.abs(sobel_hori_edges) > 2048/4)
 
-    #     mask = patch > 0
-    #     patch[mask] = patch[mask] + noise_matrix[mask]
+    directions = np.array([
+        [0, -1], [0, 1], [-1, 0], [1, 0], 
+        [-1, -1], [1, -1], [-1, 1], [1, 1]
+    ])
+
+    for i in range(0, resized_rows-kernel_size, kernel_size):
+        for j in range(0, resized_cols-kernel_size, kernel_size):
+            if edge_mask[i+kernel_size//2, j+kernel_size//2]:
+                direction = directions[rng.integers(0, len(directions))]
+                shift = 1
+                patch = imperfect_depth_resized[i:i+kernel_size, j:j+kernel_size]
+                i_shift = direction[0] * shift + i
+                j_shift = direction[1] * shift + j
+                if 0 <= i_shift < resized_rows - kernel_size and 0 <= j_shift < resized_cols - kernel_size:
+                    patch_shift = imperfect_depth_resized[i_shift:i_shift+kernel_size, j_shift:j_shift+kernel_size]
+                    # mask = (patch > 0) & (patch_shift > 0)
+                    # patch[mask] = patch_shift[mask]
+                    imperfect_depth_resized[i:i+kernel_size, j:j+kernel_size] = patch_shift
+
+    imperfect_depth = cv2.resize(imperfect_depth_resized, (cols, rows), interpolation=cv2.INTER_NEAREST)
+
+    hole_mask = imperfect_depth == 0
+
+    # Gaussian blur
+    imperfect_depth = cv2.GaussianBlur(imperfect_depth, (5, 5), 0)
+    imperfect_depth[hole_mask] = 0
 
     # Remove vertical edges
-    imperfect_depth[np.abs(sobel_vert_edges) > 2048/4] = 0
-
-    # # Sub-sampling noise
-    # imperfect_depth_resized = cv2.resize(imperfect_depth, (cols // 3, rows // 3), interpolation=cv2.INTER_NEAREST)
-    # resized_rows, resized_cols = imperfect_depth_resized.shape
-
-    # for i in range(1000):
-    #     shift = rng.integers(1,4)
-    #     row = rng.integers(shift, resized_rows)
-    #     col = rng.integers(shift, resized_cols)
-    #     imperfect_depth_resized[row, col] = imperfect_depth_resized[row, col - shift]
-    # imperfect_depth = cv2.resize(imperfect_depth_resized, (cols, rows), interpolation=cv2.INTER_NEAREST)
-
-    # # Axial noise
-    # kernel_size = 31
-    # col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
-    # col_kernel = col_kernel / col_kernel.max()
-    # row_kernel = np.transpose(col_kernel)
-    # gaussian_kernel = col_kernel * row_kernel
-
-    # for i in range(5000):
-    #     row = rng.integers(kernel_size, rows - kernel_size)
-    #     col = rng.integers(kernel_size, cols - kernel_size)
-
-    #     noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(round(kernel_size//2)), col+int(round(kernel_size//2))] + 0.003949 * imperfect_depth[row+int(round(kernel_size//2)), col+int(round(kernel_size//2))] ** 2)
-    #     patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
-    #     noise_matrix = (gaussian_kernel * noise_power)
-    #     # noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
-
-    #     mask = patch > 0
-    #     patch[mask] = patch[mask] + noise_matrix[mask]
-        
-    # # Lateral Noise
-    # kernel_size = 31
-    # col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
-    # col_kernel = col_kernel / col_kernel.max()
-    # row_kernel = np.transpose(col_kernel)
-    # gaussian_kernel = col_kernel * row_kernel
-
-    # for i in range(5000):
-    #     row = rng.integers(kernel_size, rows - kernel_size)
-    #     col = rng.integers(kernel_size, cols - kernel_size)
-
-    #     noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(round(kernel_size//2)), col+int(round(kernel_size//2))] + 0.003949 * imperfect_depth[row+int(round(kernel_size//2)), col+int(round(kernel_size//2))] ** 2)
-    #     patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
-    #     noise_matrix = (gaussian_kernel * noise_power)
-    #     # noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
-
-    #     mask = patch > 0
-    #     patch[mask] = patch[mask] + noise_matrix[mask]
-
-    # hole_mask = imperfect_depth == 0
-
-    # # Gaussian blur
-    # imperfect_depth = cv2.GaussianBlur(imperfect_depth, (5, 5), 0)
-    # imperfect_depth[hole_mask] = 0
+    imperfect_depth[np.abs(vert_edges) > 2048/4] = 0
 
     depth_ori = depth_to_color_opencv(depth_mat)
     depth_sim = depth_to_color_opencv(imperfect_depth)
