@@ -170,6 +170,8 @@ class MDMModel(nn.Module):
         else:
             base_h, base_w = round(base_h), round(base_w)
 
+        kwargs['enable_depth_mask'] = False
+
         # Backbones encoding
         features, cls_token, _, _ = self.encoder(image, depth, base_h, base_w, return_class_token=True, remap_depth_in=self.remap_depth_in, **kwargs)
 
