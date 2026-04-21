@@ -2,6 +2,7 @@ import torch
 import cv2
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
 
 sys.path.append("/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models")
 
@@ -23,7 +24,7 @@ def extract_weights_from_ckpt(ckpt):
             state_dict[clean_key] = weight
     return state_dict
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=13-validation_loss=0.0647.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/last.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 ckpt = torch.load(CKPT_PATH, map_location=device)
 
@@ -77,7 +78,7 @@ model = MDMModel.from_pretrained('robbyant/lingbot-depth-pretrain-vitl-14-v0.5')
 model.eval()
 
 # Load and prepare inputs
-image = cv2.imread('./color.png')
+image = cv2.imread('/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/color.png')
 # Resize to match validation dataset target size (480, 848)
 # image = cv2.resize(image, (848, 480))
 
@@ -93,7 +94,7 @@ image_tensor_flipped = torch.tensor(flipped_img / 255.0, dtype=torch.float32, de
 # depth_np = cv2.imread('/home/quachmd/Bureau/depth-correction/knowledge-distillation/data/lingbot/lingbot-depth_pub/RobbyReal/00016_08_stairwell/00016/realsense_D435_405622075719/rawdepth/0000001.png', cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) / 1000.0
 # print(depth_np)
 
-depth_np = np.load("/home/quachmd/Bureau/depth-correction/playground/depth.npy").astype(np.float32)
+depth_np = np.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/depth.npy').astype(np.float32)
 depth_np = np.nan_to_num(depth_np, nan=0.0, posinf=0.0, neginf=0.0)
 depth_np = cv2.resize(depth_np, (848, 480), interpolation=cv2.INTER_NEAREST)
 depth_np_flipped = np.fliplr(depth_np)
@@ -110,8 +111,8 @@ starter.record()
 # output = model.infer(image_tensor, depth_in=depth_tensor)
 with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
     with torch.no_grad():
-        output = distilled_model.infer(image_tensor, depth_in=depth_tensor, num_tokens=1200)
-        output2 = distilled_model.infer(image_tensor_flipped, depth_in=depth_tensor_flipped, num_tokens=1200)
+        output = model.infer(image_tensor, depth_in=depth_tensor, num_tokens=1200)
+        output2 = model.infer(image_tensor_flipped, depth_in=depth_tensor_flipped, num_tokens=1200)
 
 ender.record()
 
@@ -121,6 +122,21 @@ print(currtime)
 
 depth_pred = output['depth'].squeeze().float().cpu().numpy()
 depth_pred_flipped = output2['depth'].squeeze().float().cpu().numpy()
+depth_pred_flipped = depth_pred_flipped[:,::-1]
+
+valid_mask = np.isfinite(depth_pred) & (depth_pred > 0) & np.isfinite(depth_pred_flipped) & (depth_pred_flipped > 0) 
+
+depth_pred = np.nan_to_num(depth_pred, nan=0.0, posinf=0.0, neginf=0.0)
+depth_pred_flipped = np.nan_to_num(depth_pred_flipped, nan=0.0, posinf=0.0, neginf=0.0)
+
+diff = np.abs(depth_pred - depth_pred_flipped)
+diff[~valid_mask] = np.max(diff)
+# print(diff.shape)
+
+plt.imshow(diff)
+plt.tight_layout()
+plt.savefig('./diff.png')
+plt.show()
 
 # points = output['points']      # 3D point cloud
 
@@ -129,16 +145,16 @@ depth_pred_flipped = output2['depth'].squeeze().float().cpu().numpy()
 # np.save('test/depth_refined.npy', depth_pred)
 
 # 2. Save depth visualizations
-depth_raw_color = depth_to_color_opencv(depth_np)
-depth_pred_color = depth_to_color_opencv(depth_pred)
+# depth_raw_color = depth_to_color_opencv(depth_np)
+# depth_pred_color = depth_to_color_opencv(depth_pred)
 
-depth_flipped_color = depth_to_color_opencv(depth_np_flipped)
-depth_pred_color_flipped = depth_to_color_opencv(depth_pred_flipped)
-depth_concat = np.concatenate([depth_raw_color, depth_pred_color], axis=1)
-depth_concat2 = np.concatenate([depth_flipped_color, depth_pred_color_flipped], axis=1)
+# depth_flipped_color = depth_to_color_opencv(depth_np_flipped)
+# depth_pred_color_flipped = depth_to_color_opencv(depth_pred_flipped)
+# depth_concat = np.concatenate([depth_raw_color, depth_pred_color], axis=1)
+# depth_concat2 = np.concatenate([depth_flipped_color, depth_pred_color_flipped], axis=1)
 
 # cv2.imwrite(str('/home/quachmd/Bureau/depth-correction/playground/depth_refined_student.png'), depth_pred_color)
 # cv2.imwrite(str('/home/quachmd/Bureau/depth-correction/playground/depth_comparison_student.png'), depth_concat)
 
-cv2.imwrite(str('/home/quachmd/Bureau/depth-correction/playground/depth_comparison_ori.png'), depth_concat)
-cv2.imwrite(str('/home/quachmd/Bureau/depth-correction/playground/depth_comparison_flipped.png'), depth_concat2)
+# cv2.imwrite(str('/home/quachmd/Bureau/depth-correction/playground/depth_comparison_ori.png'), depth_concat)
+# cv2.imwrite(str('/home/quachmd/Bureau/depth-correction/playground/depth_comparison_flipped.png'), depth_concat2)
