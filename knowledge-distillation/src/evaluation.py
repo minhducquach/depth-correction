@@ -8,6 +8,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 # from fvcore.nn import FlopCountAnalysis
 from ptflops import get_model_complexity_info
+from sklearn.decomposition import PCA
+import torch.nn.functional as F
 
 from data_modules.datamodule import MyDataModule
 from models.mdm.model.v2 import MDMModel
@@ -17,7 +19,7 @@ torch.cuda.empty_cache()
 
 torch.manual_seed(16)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=17-validation_loss=0.0622.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/added_lingbot_l1/mdm-distill-epoch=20-validation_loss=0.0610.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_num_tokens():
@@ -299,6 +301,128 @@ def evaluate_time_complexity(o_model, d_model, dataloader, device):
     # print('Computational complexity of distilled model: ', macs_d)
     # print('Number of parameters of distilled model: ', params_d)
 
+def visualize_inter_map(o_model, d_model, device):
+    o_model.eval()
+    o_model.to(device)
+
+    d_model.eval()
+    d_model.to(device)
+
+    color = cv2.imread('/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/1739893136_240500000.png')
+    color = cv2.resize(color, (848, 480))
+    color_tensor = torch.tensor(color / 255.0, dtype=torch.float32, device=device).permute(2, 0, 1)[None]
+
+    depth_np = np.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/1739893136_240500000.npy').astype(np.float32)
+    depth_np = np.nan_to_num(depth_np, nan=0.0, posinf=0.0, neginf=0.0)
+    depth_np = cv2.resize(depth_np, (848, 480), interpolation=cv2.INTER_NEAREST)
+    depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None, None]
+
+    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+        with torch.no_grad():
+            pred_o, o_vit_feats, o_depth_maps, cls_token_o = o_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[3,7,11,15,19,23])
+            pred_d, d_vit_feats, d_depth_maps, cls_token_d = d_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[1,3,5,7,9,11])
+
+            # if isinstance(o_vit_feats, list) and isinstance(d_vit_feats, list):
+            #     o_vit_feats = o_vit_feats[-1]
+            #     d_vit_feats = d_vit_feats[-1]
+
+            # print(o_vit_feats.shape, d_vit_feats.shape)
+
+            # fig, axs = plt.subplots(6, 8, figsize=(64,32))
+
+            # # print(d_vit_feats.cpu().numpy().shape)
+            # print([m.shape for m in d_depth_maps])
+            # print([m.shape for m in o_depth_maps])
+            # # print(cls_token_d.cpu().numpy().shape)
+
+            # last_depth_map_d = d_depth_maps[-2].squeeze()
+            # last_depth_map_o = o_depth_maps[-2].squeeze()
+
+            # for i in range(8):
+            #     depth_d = last_depth_map_d[i, :, :].float().cpu().numpy()
+            #     depth_o = last_depth_map_o[i*2, :, :].float().cpu().numpy()
+            #     depth_o_1 = last_depth_map_o[i*2+1, :, :].float().cpu().numpy()
+
+            #     axs[0, i].imshow(depth_d)
+            #     axs[1, i].imshow(depth_o)
+            #     axs[2, i].imshow(depth_o_1)
+
+            # for i in range(8, 16):
+            #     depth_d = last_depth_map_d[i, :, :].float().cpu().numpy()
+            #     depth_o = last_depth_map_o[i*2, :, :].float().cpu().numpy()
+            #     depth_o_1 = last_depth_map_o[i*2+1, :, :].float().cpu().numpy()
+
+            #     axs[3, i-8].imshow(depth_d)
+            #     axs[4, i-8].imshow(depth_o)
+            #     axs[5, i-8].imshow(depth_o_1)
+
+            # fig, axs = plt.subplots()
+
+            # B, C_t, H, W = o_vit_feats.shape
+            # _, C_s, _, _ = d_vit_feats.shape
+            
+            # # 1. PCA Visualization (Independent since dims differ)
+            # feat_t_flat = o_vit_feats[0].reshape(C_t, -1).permute(1, 0).float().cpu().numpy() # (1196, 1024)
+            # feat_s_flat = d_vit_feats[0].reshape(C_s, -1).permute(1, 0).float().cpu().numpy() # (1196, 192)
+            
+            # pca_t = PCA(n_components=3).fit_transform(feat_t_flat)
+            # pca_s = PCA(n_components=3).fit_transform(feat_s_flat)
+
+            # print(pca_t.shape)
+            
+            # # Normalize for RGB viewing independently
+            # t_min, t_max = pca_t.min(axis=0), pca_t.max(axis=0)
+            # s_min, s_max = pca_s.min(axis=0), pca_s.max(axis=0)
+            # pca_t = (pca_t - t_min) / (t_max - t_min + 1e-8)
+            # pca_s = (pca_s - s_min) / (s_max - s_min + 1e-8)
+            
+            # pca_img_t = pca_t.reshape(H, W, 3)
+            # pca_img_s = pca_s.reshape(H, W, 3)
+            
+            # Plotting
+            fig, axs = plt.subplots(len(o_vit_feats), 2, figsize=(14, 10))
+            axs[0,0].set_title("Teacher AT")
+            axs[0,1].set_title("Student AT")
+            
+            # axs[0].imshow(pca_img_t)
+            # axs[0].set_title("Teacher ViT Features (PCA - 1024D)")
+            # axs[0].axis('off')
+            
+            # axs[1].imshow(pca_img_s)
+            # axs[1].set_title("Student ViT Features (PCA - 192D)")
+            # axs[1].axis('off')
+
+            def at(x):
+                return x.pow(2).mean(0)
+            
+            for i in range(len(o_vit_feats)):
+            
+                at_t = cv2.normalize(at(o_vit_feats[i][0]).float().cpu().numpy(), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+                # at_t = cv2.resize(at_t, (848, 480), interpolation=cv2.INTER_CUBIC)
+
+                at_s = cv2.normalize(at(d_vit_feats[i][0]).float().cpu().numpy(), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+                # at_s = cv2.resize(at_s, (848, 480), interpolation=cv2.INTER_CUBIC)
+
+                # at_t = cv2.normalize(cv2.resize(at(o_vit_feats[0]).float().cpu().numpy(), (848, 480)), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+                # at_s = cv2.normalize(cv2.resize(at(d_vit_feats).float().cpu().numpy(), (848, 480)), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+
+                # print(at_t * 255.0)
+                # print(at_t)
+
+                # heatmap_att = cv2.addWeighted(np.asarray(color[:,:,1], dtype=np.float32), 0.7, np.asarray(at_t, dtype=np.float32), 0.3, 0)
+
+                axs[i,0].imshow(at_t, interpolation='bicubic')
+                # axs[0].set_title("Teacher AT")
+                axs[i,0].axis('off')
+                
+                axs[i,1].imshow(at_s, interpolation='bicubic')
+                # axs[1].set_title("Student AT")
+                axs[i,1].axis('off')
+                            
+            plt.tight_layout()
+            plt.show()
+
+
 if __name__ == "__main__":
     data_module = MyDataModule()
     data_module.setup(stage='test')
@@ -316,15 +440,8 @@ if __name__ == "__main__":
 
     # evaluate_metrics(original_model, distilled_model, test_dataset, device)
 
-    evaluate_visual(original_model, distilled_model, test_dataset, device)
+    # evaluate_visual(original_model, distilled_model, test_dataset, device)
 
     # evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
 
-    
-
-
-
-
-
-
-
+    visualize_inter_map(original_model, distilled_model,  device)

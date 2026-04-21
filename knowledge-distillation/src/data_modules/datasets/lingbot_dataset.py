@@ -14,7 +14,10 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-BASE_DIR = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/data/lingbot/lingbot-depth_pub/RobbyReal"
+BASE_DIR = [
+    "/home/quachmd/Bureau/depth-correction/knowledge-distillation/data/lingbot/lingbot-depth_pub/RobbyReal",
+    "/home/quachmd/Bureau/depth-correction/datasets/lingbot-depth_pub/RobbyReal"
+]
 
 def preprocess_input_image(image_path):
     """
@@ -78,11 +81,13 @@ def load_depth_map(depth_path, scale=1000.0):
     return depth_map
 
 class Lingbot(torch.utils.data.Dataset):
-    def __init__(self, dir=BASE_DIR):
-        search_pattern = os.path.join(dir, '**', 'color', '*.jpg')
-        self.color_files = sorted(glob.glob(search_pattern, recursive=True))
-
+    def __init__(self, dirs=BASE_DIR):
+        self.color_files = []
         self.depth_files = []
+        
+        for dir in dirs:
+            search_pattern = os.path.join(dir, '**', 'color', '*.jpg')
+            self.color_files += sorted(glob.glob(search_pattern, recursive=True))
 
         for color_path in self.color_files:
             depth_path = color_path.replace('/color/', '/rawdepth/')

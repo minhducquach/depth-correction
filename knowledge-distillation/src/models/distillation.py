@@ -53,8 +53,8 @@ class DistillationModel(pl.LightningModule):
             }
         }
     
-    def forward(self, image, depth, num_tokens):
-        return self.student(image=image, depth=depth, num_tokens=num_tokens)
+    def forward(self, image, depth, num_tokens, extract_layers):
+        return self.student(image=image, depth=depth, num_tokens=num_tokens, extract_layers=extract_layers)
     
     def on_train_epoch_start(self):
         self.teacher.eval()
@@ -92,16 +92,16 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, feat_s, feat_neck_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[2,5,8,11])
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, feat_t, feat_neck_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[5,11,17,23])
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
-        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
+        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         # print('Train loss:', loss)
 
         self.log("train_loss", loss)
@@ -112,16 +112,16 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, feat_s, feat_neck_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[2,5,8,11])
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, feat_t, feat_neck_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[5,11,17,23])
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
-        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
+        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         self.log("validation_loss", loss)
 
         # metrics_dict = compute_metrics(depth_s, depth_t) 
@@ -143,16 +143,16 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, feat_s, feat_neck_s = self(image=color, depth=depth_in, num_tokens=num_tokens)
+        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[2,5,8,11])
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, feat_t, feat_neck_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens)
+            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[5,11,17,23])
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
-        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t)
+        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         self.log("test_loss", loss)
 
         # metrics_dict = compute_metrics(depth_s, depth_t)

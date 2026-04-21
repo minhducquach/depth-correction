@@ -97,7 +97,8 @@ class DINOv2_RGBD_Encoder(nn.Module):
                 token_rows: Union[int, torch.LongTensor], 
                 token_cols: Union[int, torch.LongTensor], 
                 return_class_token: bool = False, 
-                remap_depth_in: str='linear', 
+                remap_depth_in: str='linear',
+                extract_layers: Union[int, List[int]] = None,
                 **kwargs):
         image_14 = F.interpolate(image, (token_rows * 14, token_cols * 14), mode="bilinear", align_corners=False, antialias=not self.onnx_compatible_mode)
         image_14 = (image_14 - self.image_mean) / self.image_std
@@ -119,16 +120,20 @@ class DINOv2_RGBD_Encoder(nn.Module):
         else:
             raise NotImplementedError
         
+        target_layers = extract_layers if extract_layers is not None else self.intermediate_layers
+        
         # Get intermediate layers from the backbone
         features = self.backbone.get_intermediate_layers_mae(
             x_img=image_14, 
             x_depth=depth_14, 
-            n=self.intermediate_layers, 
+            n=target_layers, 
             return_class_token=True,
             **kwargs)
 
         assert self.img_mask_ratio == 0, "img_mask_ratio is not supported in this encoder"
-    
+
+
+        # Feat entry: (spatial_token, cls_token)
         if isinstance(features[0][0], list):
             num_valid_tokens = token_rows * token_cols
             features = tuple(
@@ -138,15 +143,23 @@ class DINOv2_RGBD_Encoder(nn.Module):
                 )
                 for feats, cls_tokens in features
             )
+
+        unprojected_features = [
+            feat.permute(0, 2, 1)[:, :, :token_rows*token_cols].unflatten(2, (token_rows, token_cols)).contiguous() for feat, cls_token in features
+        ]
         
+        num_projections = len(self.output_projections)
+        features_to_project = features[-num_projections:]
+
         # Project features to the desired dimensionality 
         x = torch.stack([
             proj(feat.permute(0, 2, 1)[:, :, :token_rows*token_cols].unflatten(2, (token_rows, token_cols)).contiguous())
-                for proj, (feat, clstoken) in zip(self.output_projections, features)
+                for proj, (feat, clstoken) in zip(self.output_projections, features_to_project)
         ], dim=1).sum(dim=1)
+
         cls_token = features[-1][1]      
 
         if return_class_token:
-            return x, cls_token, None, None
+            return x, cls_token, unprojected_features, None
         else:
-            return x, None, None
+            return x, unprojected_features, None

@@ -171,10 +171,9 @@ class MDMModel(nn.Module):
             base_h, base_w = round(base_h), round(base_w)
 
         # Backbones encoding
-        features, cls_token, _, _ = self.encoder(image, depth, base_h, base_w, return_class_token=True, remap_depth_in=self.remap_depth_in, **kwargs)
+        features, cls_token, intermediate_features, _ = self.encoder(image, depth, base_h, base_w, return_class_token=True, remap_depth_in=self.remap_depth_in, **kwargs)
 
         features = features + cls_token[..., None, None]
-        return_feats = features.clone()
 
         features = [features, None, None, None, None]
 
@@ -194,9 +193,11 @@ class MDMModel(nn.Module):
         # Heads decoding
         depth_reg, normal, mask = (getattr(self, head)(features)[-1] if hasattr(self, head) else None for head in ['depth_head', 'normal_head', 'mask_head'])
         metric_scale = self.scale_head(cls_token) if hasattr(self, 'scale_head') else None
+        # print('Depth reg pre:', depth_reg.shape)
         
         # Resize
         depth_reg, normal, mask = (F.interpolate(v, (img_h, img_w), mode='bilinear', align_corners=False, antialias=False) if v is not None else None for v in [depth_reg, normal, mask])
+        # print('Depth reg post:', depth_reg.shape)
         
         # Remap output
         if depth_reg is not None:
@@ -224,7 +225,7 @@ class MDMModel(nn.Module):
         }
         return_dict = {k: v for k, v in return_dict.items() if v is not None}
 
-        return return_dict, return_feats, features
+        return return_dict, intermediate_features, features, cls_token
 
     @torch.inference_mode()
     def infer(
@@ -260,7 +261,7 @@ class MDMModel(nn.Module):
         # Forward pass
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16, enabled=use_fp16 and self.dtype != torch.bfloat16):
             kwargs['enable_depth_mask'] = False
-            output, _, _ = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
+            output, _, _, _ = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
         depth_reg, mask = (output.get(k, None) for k in ['depth_reg', 'mask'])
 
         # Always process the output in fp32 precision

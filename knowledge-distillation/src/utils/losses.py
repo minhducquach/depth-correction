@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class DSSIM(nn.Module):
     """Layer to compute the DSSIM loss between a pair of images
@@ -57,6 +58,7 @@ class Sobel(nn.Module):
 
         return grad_x, grad_y
 
+
 class Criterion(nn.Module):
     def __init__(self):
         super().__init__()
@@ -65,7 +67,13 @@ class Criterion(nn.Module):
         # self.sobel = Sobel()
         self.dssim = DSSIM()
 
-    def forward(self, pred_S, pred_T, pred_mask_S, pred_mask_T):
+    def at(self, x):
+        return F.normalize(x.pow(2).mean(1).view(x.size(0), -1))
+
+    def at_loss(self, x, y):
+        return (self.at(x) - self.at(y)).pow(2).mean()
+
+    def forward(self, pred_S, pred_T, pred_mask_S, pred_mask_T, features_T=None, features_S=None, inter_T=None, inter_S=None):
         t_tensor = pred_T.detach()
         s_tensor = pred_S
 
@@ -75,7 +83,7 @@ class Criterion(nn.Module):
         # grad_t, grad_s = self.sobel(t_tensor, s_tensor)
         # grad_loss = self.l1_loss(grad_t, grad_s)
 
-        # L1 version
+        # L1 version - Sobel
         # loss = 0.85 * (self.dssim(s_tensor, t_tensor) + grad_loss) + 0.15 * self.l1_loss(s_tensor, t_tensor)
         # loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
@@ -86,20 +94,23 @@ class Criterion(nn.Module):
 
         # total_loss = avg_masked_depth_loss + self.l1_loss(s_mask_tensor, t_mask_tensor).mean()
 
-        loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor) 
+
+        # L1 version - vanila
+        # loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor) 
+        # loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
+
+        # L1 version - AT
+        loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor)
         loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
-        # valid_mask_t = torch.isfinite(t_tensor)
-        # valid_mask_s = torch.isfinite(s_tensor)
+        total_loss = loss.mean()
 
-        # t_valid = torch.where(valid_mask_t, t_tensor, torch.zeros_like(t_tensor))
-        # s_valid = torch.where(valid_mask_s, s_tensor, torch.zeros_like(t_tensor))
+        if features_T is not None and features_S is not None:
+            sum_at_neck = sum(self.at_loss(features_T[i], features_S[i]) for i in range(len(features_S)))
+            total_loss += 0.1 * sum_at_neck
+            
+        if inter_T is not None and inter_S is not None:
+            sum_at_inter = sum(self.at_loss(inter_T[i], inter_S[i]) for i in range(len(inter_S)))
+            total_loss += 0.1 * sum_at_inter
 
-        # loss = 0.85 * self.dssim(s_valid, t_valid) + 0.15 * self.l1_loss(s_valid, t_valid)
-        # print('Train loss:', self.dssim(s_valid, t_valid).mean(), self.l1_loss(s_valid, t_valid).mean(), loss.mean())
-        
-        # loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor)
-        # print('Train loss:', self.dssim(s_tensor, t_tensor).mean(), self.l1_loss(s_tensor, t_tensor).mean(), loss.mean())
-
-        return loss.mean()
-        # return total_loss
+        return total_loss
