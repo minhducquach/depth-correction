@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .dinov2_rgbd.models.vision_transformer import DinoVisionTransformer
+# from .dinov3_rgbd.models.vision_transformer import DinoVisionTransformer
 from .utils import wrap_dinov2_attention_with_sdpa, wrap_module_with_gradient_checkpointing
 
 
@@ -163,3 +164,153 @@ class DINOv2_RGBD_Encoder(nn.Module):
             return x, cls_token, unprojected_features, None
         else:
             return x, unprojected_features, None
+
+# class DINOv3_RGBD_Encoder(nn.Module):
+#     backbone: DinoVisionTransformer
+#     image_mean: torch.Tensor
+#     image_std: torch.Tensor
+#     dim_features: int
+
+#     def __init__(self, backbone: str, intermediate_layers: Union[int, List[int]], dim_out: int, ignore_layers: Union[str, List[str]]=[], in_chans: int=3, strict: bool=True, img_depth_fuse_mode='', depth_emb_mode='', depth_mask_ratio=0.6, img_mask_ratio=0.0, **deprecated_kwargs):
+#         super(DINOv3_RGBD_Encoder, self).__init__()
+
+#         self.intermediate_layers = intermediate_layers
+#         self.strict = strict
+#         self.ignore_layers = ignore_layers
+#         self.img_mask_ratio = img_mask_ratio
+#         # Load the backbone
+#         self.hub_loader = getattr(importlib.import_module(".dinov3_rgbd.hub.backbones", __package__), backbone)
+#         self.backbone_name = backbone
+#         self.backbone = self.hub_loader(pretrained=False, 
+#                                         in_chans=in_chans, 
+#                                         img_depth_fuse_mode=img_depth_fuse_mode, 
+#                                         depth_emb_mode=depth_emb_mode,
+#                                         depth_mask_ratio=depth_mask_ratio, 
+#                                         img_mask_ratio=img_mask_ratio)
+        
+#         self.dim_features = self.backbone.blocks[0].attn.qkv.in_features
+#         self.num_features = intermediate_layers if isinstance(intermediate_layers, int) else len(intermediate_layers)
+
+#         if img_mask_ratio > 0:
+#             self.mask_token_mae = nn.Parameter(torch.zeros(1, 1, self.dim_features))
+#             torch.nn.init.normal_(self.mask_token_mae, std=.02)
+
+#         self.output_projections = nn.ModuleList([
+#             nn.Conv2d(in_channels=self.dim_features, out_channels=dim_out, kernel_size=1, stride=1, padding=0,) 
+#                 for _ in range(self.num_features)
+#         ])
+
+#         self.register_buffer("image_mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+#         self.register_buffer("image_std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+
+#     @property
+#     def onnx_compatible_mode(self):
+#         return getattr(self, "_onnx_compatible_mode", False)
+
+#     @onnx_compatible_mode.setter
+#     def onnx_compatible_mode(self, value: bool):
+#         self._onnx_compatible_mode = value
+#         self.backbone.onnx_compatible_mode = value
+
+#     def init_weights(self):
+#         pretrained_backbone_state_dict = self.hub_loader(pretrained=True).state_dict()
+#         ignore_layers = []
+#         if isinstance(self.ignore_layers, str):
+#             ignore_layers = [self.ignore_layers]
+#         else:
+#             ignore_layers = self.ignore_layers
+        
+#         if len(ignore_layers) == 0:
+#             self.backbone.load_state_dict(pretrained_backbone_state_dict, strict=self.strict)
+#         else:
+#             state_dict = {}
+#             for k, v in pretrained_backbone_state_dict.items():
+#                 is_ignore = False
+#                 for ig_k in ignore_layers:
+#                     if ig_k in k:
+#                         is_ignore = True
+#                         break
+#                 if not is_ignore:
+#                     state_dict[k] = v
+#             self.backbone.load_state_dict(state_dict, strict=self.strict)
+
+#     def enable_gradient_checkpointing(self):
+#         for i in range(len(self.backbone.blocks)):
+#             wrap_module_with_gradient_checkpointing(self.backbone.blocks[i])
+
+#     def enable_pytorch_native_sdpa(self):
+#         for i in range(len(self.backbone.blocks)):
+#             wrap_dinov3_attention_with_sdpa(self.backbone.blocks[i].attn)
+
+#     def forward(self, 
+#                 image: torch.Tensor, 
+#                 depth: torch.Tensor, 
+#                 token_rows: Union[int, torch.LongTensor], 
+#                 token_cols: Union[int, torch.LongTensor], 
+#                 return_class_token: bool = False, 
+#                 remap_depth_in: str='linear',
+#                 extract_layers: Union[int, List[int]] = None,
+#                 **kwargs):
+#         image_16 = F.interpolate(image, (token_rows * 16, token_cols * 14), mode="bilinear", align_corners=False, antialias=not self.onnx_compatible_mode)
+#         image_16 = (image_16 - self.image_mean) / self.image_std
+        
+#         depth_16 = F.interpolate(depth, (token_rows * 16, token_cols * 14), mode="nearest")
+
+#         # set invalid depth value to zero
+#         depth_16[torch.isinf(depth_16)] = 0.0
+#         depth_16[torch.isnan(depth_16)] = 0.0
+#         dmask_16 = (depth_16 > 0.01).detach()
+#         depth_16 = depth_16 * dmask_16.float()
+
+#         if remap_depth_in == 'linear':
+#             pass # do nothing
+#         elif remap_depth_in == 'log':
+#             depth_16 = torch.log(depth_16)
+#             depth_16[~dmask_16] = 0.0
+#             depth_16 = torch.nan_to_num(depth_16, nan=0.0, posinf=0.0, neginf=0.0)
+#         else:
+#             raise NotImplementedError
+        
+#         target_layers = extract_layers if extract_layers is not None else self.intermediate_layers
+        
+#         # Get intermediate layers from the backbone
+#         features = self.backbone.get_intermediate_layers_mae(
+#             x_img=image_16, 
+#             x_depth=depth_16, 
+#             n=target_layers, 
+#             return_class_token=True,
+#             **kwargs)
+
+#         assert self.img_mask_ratio == 0, "img_mask_ratio is not supported in this encoder"
+
+
+#         # Feat entry: (spatial_token, cls_token)
+#         if isinstance(features[0][0], list):
+#             num_valid_tokens = token_rows * token_cols
+#             features = tuple(
+#                 (
+#                     torch.cat([feat[:, :num_valid_tokens].contiguous() for feat in feats], dim=0),
+#                     torch.cat(cls_tokens, dim=0)
+#                 )
+#                 for feats, cls_tokens in features
+#             )
+
+#         unprojected_features = [
+#             feat.permute(0, 2, 1)[:, :, :token_rows*token_cols].unflatten(2, (token_rows, token_cols)).contiguous() for feat, cls_token in features
+#         ]
+        
+#         num_projections = len(self.output_projections)
+#         features_to_project = features[-num_projections:]
+
+#         # Project features to the desired dimensionality 
+#         x = torch.stack([
+#             proj(feat.permute(0, 2, 1)[:, :, :token_rows*token_cols].unflatten(2, (token_rows, token_cols)).contiguous())
+#                 for proj, (feat, clstoken) in zip(self.output_projections, features_to_project)
+#         ], dim=1).sum(dim=1)
+
+#         cls_token = features[-1][1]      
+
+#         if return_class_token:
+#             return x, cls_token, unprojected_features, None
+#         else:
+#             return x, unprojected_features, None

@@ -11,16 +11,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from data_modules.datamodule import MyDataModule
 from models.distillation import DistillationModel
 
-def main():
-    torch.set_float32_matmul_precision('medium')
-
-    pl.seed_everything(42, workers=True)
-
+def train_func(config):
     print("Initializing DataModule...")
-    datamodule = MyDataModule()
+    datamodule = MyDataModule(batch_size=config["batch_size"])
 
     print("Initializing Distillation Model...")
-    model = DistillationModel(learning_rate=1e-4)
+    model = DistillationModel(config)
+    # Initialize with weights from the checkpoint, but use the new config
+    # model = DistillationModel.load_from_checkpoint("checkpoints/last.ckpt", config=config)
     # model.compile(mode='default')
 
     checkpoint_callback = ModelCheckpoint(
@@ -42,23 +40,50 @@ def main():
     )
 
     # 4. Setup Logger
-    logger = TensorBoardLogger(save_dir="logs/", name="mdm_distillation")
+    # logger = TensorBoardLogger(save_dir="logs/", name="hypertesting", version="lr=2.3e-4")
+    logger = TensorBoardLogger(save_dir="logs/", name="small_train", version="only_at_neck_concat_mae_correct")
 
     print("Setting up PyTorch Lightning Trainer...")
     trainer = pl.Trainer(
-        max_epochs=100,                  
+        max_epochs=1000,                  
         accelerator="auto", 
         devices=1,
         precision="bf16-mixed",         
-        accumulate_grad_batches=2,      
+        accumulate_grad_batches=max(1, 1024 // config["batch_size"]),      
         callbacks=[checkpoint_callback, lr_monitor, early_stop],
         logger=logger,
-        log_every_n_steps=100
+        log_every_n_steps=10,
+        # profiler="simple",
+        # fast_dev_run=True
     )
 
-    trainer.fit(model, datamodule=datamodule, ckpt_path="last")
+    trainer.fit(model, datamodule=datamodule)
 
     trainer.test(model, datamodule=datamodule, ckpt_path="best")
+    # print("done")
+
+def main():
+    torch.set_float32_matmul_precision('medium')
+
+    # # Increase TorchDynamo compile cache limits to avoid recompilation errors
+    # torch._dynamo.config.cache_size_limit = 1024
+    # if hasattr(torch._dynamo.config, "accumulated_cache_size_limit"):
+    #     torch._dynamo.config.accumulated_cache_size_limit = 1024
+
+    pl.seed_everything(42, workers=True)
+
+    config = {
+        'learning_rate_backbone': 2.6e-5,
+        'learning_rate': 2.6e-4,
+        'betas_lr': (0.9, 0.999),
+        'weight_decay': 0.1,
+        'batch_size': 8,
+        'alpha': 0.85,
+        'beta': 0.15,
+        'gamma': 0.1
+    }
+
+    train_func(config)
 
 if __name__ == "__main__":
     main()

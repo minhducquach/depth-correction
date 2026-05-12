@@ -64,7 +64,7 @@ def _make_dinov2_model(
 
 def dinov2_vittiny14(*, pretrained: bool = True, weights: Union[Weights, str] = Weights.LVD142M, **kwargs):
     """
-    DINOv2 ViT-Tiny/14 model (optionally) pretrained on the LVD-142M dataset.
+    DINOv2 ViT-Tiny/14 model
     """
     return _make_dinov2_model(arch_name="vit_tiny", pretrained=pretrained, weights=weights, **kwargs)
 

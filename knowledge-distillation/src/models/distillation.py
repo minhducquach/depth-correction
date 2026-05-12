@@ -12,17 +12,23 @@ from utils.metrics import compute_metrics
 from prettytable import PrettyTable
 
 class DistillationModel(pl.LightningModule):
-    def __init__(self, learning_rate=1e-5, weight_decay=0.05):
+    def __init__(self, config):
         super().__init__()
         self.save_hyperparameters()
+        self.learning_rate = config["learning_rate"]
 
         self.teacher = MDMModel.from_pretrained()
         # self.teacher.compile(mode='default')
 
-        self.student = MDMModel.from_pretrained_config()
-        # self.student.compile(mode='default')
+        # self.student = MDMModel.from_pretrained_config()
+        self.student = MDMModel.from_pretrained_config_small()
 
-        self.loss_fn = Criterion()
+        # self.student.encoder.enable_gradient_checkpointing()
+        # self.student.neck.enable_gradient_checkpointing()
+        # self.student.depth_head.enable_gradient_checkpointing()
+        # self.student.mask_head.enable_gradient_checkpointing()
+
+        self.loss_fn = Criterion(alpha=config["alpha"], beta=config["beta"], gamma=config["gamma"])
         # self.loss_fn.compile(mode='default')
 
         self.teacher.eval()
@@ -30,20 +36,54 @@ class DistillationModel(pl.LightningModule):
             param.requires_grad = False
 
     def configure_optimizers(self):
+        # optimizer = torch.optim.AdamW(
+        #     self.student.parameters(), 
+        #     lr=self.learning_rate, 
+        #     weight_decay=self.hparams.config["weight_decay"]
+        # )
+
+        backbone_params = []
+        decoder_params = []
+        for name, param in self.student.named_parameters():
+            if "backbone" in name:
+                backbone_params.append(param)
+            else:
+                decoder_params.append(param)
+
         optimizer = torch.optim.AdamW(
-            self.student.parameters(), 
-            lr=self.hparams.learning_rate, 
-            weight_decay=self.hparams.weight_decay
+            [
+                {
+                    'params': backbone_params,
+                    'lr': self.hparams.config["learning_rate_backbone"]
+                },
+                {
+                    'params': decoder_params
+                }
+            ],
+            lr=self.learning_rate, 
+            betas=self.hparams.config["betas_lr"],
+            weight_decay=self.hparams.config["weight_decay"]
         )
 
-        def lr_lambda(current_step):
-            if current_step <= 2000:
-                return float(current_step) / 2000.0
+        def encoder_lr_lambda(current_step):
+            if current_step <= 100:
+                return float(current_step) / 100.0
             else:
-                decay_steps = (current_step - 2000) // 100000
+                decay_steps = (current_step - 100) // 5000
                 return 0.5 ** decay_steps
 
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+        def decoder_lr_lambda(current_step):
+            if current_step <= 100:
+                return 1.0  # Starts directly at target value
+            else:
+                decay_steps = (current_step - 100) // 5000
+                return 0.5 ** decay_steps
+
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, 
+            lr_lambda=[encoder_lr_lambda, decoder_lr_lambda]
+        )
+        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(factor=0.5, patience=3),
 
         return {
             "optimizer": optimizer,
@@ -58,6 +98,13 @@ class DistillationModel(pl.LightningModule):
     
     def on_train_epoch_start(self):
         self.teacher.eval()
+
+    # def on_load_checkpoint(self, checkpoint):
+    #     state_dict = checkpoint.get("state_dict", {})
+    #     cleaned_state_dict = {}
+    #     for k, v in state_dict.items():
+    #         cleaned_state_dict[k.replace("_orig_mod.", "")] = v
+    #     checkpoint["state_dict"] = cleaned_state_dict
 
     def extract_and_mask_depth(self, pred_dict, apply_mask=True):
         """Extracts depth/mask from the model dict and applies invalid pixel masking."""
@@ -92,12 +139,12 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[2,5,8,11])
+        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(2,5,8,11))
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[5,11,17,23])
+            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(5,11,17,23))
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
@@ -112,12 +159,12 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[2,5,8,11])
+        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(2,5,8,11))
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[5,11,17,23])
+            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(5,11,17,23))
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
@@ -143,12 +190,12 @@ class DistillationModel(pl.LightningModule):
         depth_in = batch['depth']
         num_tokens = self.get_num_tokens()
 
-        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[2,5,8,11])
+        raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(2,5,8,11))
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
         depth_s, mask_s = raw_pred_s['depth_reg'], raw_pred_s['mask']
 
         with torch.no_grad():
-            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=[5,11,17,23])
+            raw_pred_t, intermediate_feat_t, feat_neck_t, cls_token_t = self.teacher(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(5,11,17,23))
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 

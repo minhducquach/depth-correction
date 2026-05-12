@@ -9,9 +9,9 @@ from models.mdm.model.v2 import MDMModel
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device = 'cuda'
 
-model = MDMModel.from_pretrained_config()
+model = MDMModel.from_pretrained_config_small()
 # 2. Load the raw Lightning checkpoint dictionary
-checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=05-validation_loss=0.0860.ckpt')
+checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=11-validation_loss=0.0361.ckpt')
 
 # 3. Extract just the "state_dict" containing the weights
 lightning_state_dict = checkpoint["state_dict"]

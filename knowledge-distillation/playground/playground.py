@@ -6,11 +6,11 @@ sys.path.append("../")
 
 from src.models.mdm.model.v2 import MDMModel
 
-depth_raw = np.load("/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy")
-depth_refined = np.load("/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/depth_ref.npy")
+# depth_raw = np.load("/home/quachmd/Bureau/depth-correction/datasets/darknav/Circular/depth/1739893136_240500000.npy")
+# depth_refined = np.load("/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/depth_ref.npy")
 
-print(depth_raw / 1000.0)
-print(depth_refined)
+# print(depth_raw / 1000.0)
+# print(depth_refined)
 
 # norm_raw = np.linalg.norm(depth_raw)
 # norm_refined = np.linalg.norm(depth_refined)
@@ -19,7 +19,7 @@ print(depth_refined)
 # print(np.mean((cosine_similarity)))
 
 # 1. Initialize an empty student MDMModel (ViT-Tiny)
-# model = MDMModel.from_pretrained_config()
+model = MDMModel.from_pretrained_config()
 
 # # 2. Load the raw Lightning checkpoint dictionary
 # checkpoint = torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=06-validation_loss=1.3047.ckpt', map_location='cpu')
@@ -41,4 +41,4 @@ print(depth_refined)
 # print("Student model successfully loaded!")
 # model.eval()
 
-# print(model.state_dict().keys())
+print(model.encoder.state_dict().keys())

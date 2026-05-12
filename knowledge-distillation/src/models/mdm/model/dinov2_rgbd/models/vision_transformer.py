@@ -110,6 +110,7 @@ class DinoVisionTransformer(nn.Module):
         self.num_register_tokens = num_register_tokens
         self.interpolate_antialias = interpolate_antialias
         self.interpolate_offset = interpolate_offset
+        self.depth_mask_ratio = depth_mask_ratio
 
         self.patch_embed = embed_layer(img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
@@ -299,15 +300,28 @@ class DinoVisionTransformer(nn.Module):
         x_depth = x_depth + depth_pose_enc
 
         ## mask depth tokens
-        if kwargs.get('enable_depth_mask', True):        
-            x_depth_masked, depth_mask_info = depth_masking(
-                x_depth, 
-                depth_patch_num_h, 
-                depth_patch_num_w,
-                depth_values=x_depth_raw,
-                depth_mask_threshold_num=[1]*B,
-                valid_depth_range=(-9.5, 200.0)
-            )
+        if kwargs.get('enable_depth_mask', True):
+            if not self.training:       
+                x_depth_masked, depth_mask_info = depth_masking(
+                    x_depth, 
+                    depth_patch_num_h, 
+                    depth_patch_num_w,
+                    depth_values=x_depth_raw,
+                    depth_mask_threshold_num=[1]*B,
+                    valid_depth_range=(-9.5, 200.0),
+                    depth_mask_ratio=None
+                )
+            else:
+                x_depth_masked, depth_mask_info = depth_masking(
+                    x_depth, 
+                    depth_patch_num_h, 
+                    depth_patch_num_w,
+                    depth_values=x_depth_raw,
+                    depth_mask_threshold_num=[1]*B,
+                    valid_depth_range=(-9.5, 200.0),
+                    depth_mask_ratio=self.depth_mask_ratio
+                    # depth_mask_ratio=None
+                )
         else:
             x_depth_masked = x_depth
             depth_mask_info = None

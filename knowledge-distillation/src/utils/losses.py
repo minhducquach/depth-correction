@@ -60,12 +60,16 @@ class Sobel(nn.Module):
 
 
 class Criterion(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha=0.85, beta=0.15, gamma=0.1):
         super().__init__()
         self.l1_loss = nn.L1Loss(reduction="none")
         # self.l2_loss = nn.MSELoss(reduction="none")
         # self.sobel = Sobel()
         self.dssim = DSSIM()
+
+        self.alpha = alpha
+        self.beta = beta
+        self.gamma = gamma
 
     def at(self, x):
         return F.normalize(x.pow(2).mean(1).view(x.size(0), -1))
@@ -100,17 +104,17 @@ class Criterion(nn.Module):
         # loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
         # L1 version - AT
-        loss = 0.85 * self.dssim(s_tensor, t_tensor) + 0.15 * self.l1_loss(s_tensor, t_tensor)
+        loss = self.alpha * self.dssim(s_tensor, t_tensor) + self.beta * self.l1_loss(s_tensor, t_tensor)
         loss = t_mask_tensor * loss + self.l1_loss(s_mask_tensor, t_mask_tensor)
 
         total_loss = loss.mean()
 
         if features_T is not None and features_S is not None:
             sum_at_neck = sum(self.at_loss(features_T[i], features_S[i]) for i in range(len(features_S)))
-            total_loss += 0.1 * sum_at_neck
+            total_loss += self.gamma * sum_at_neck
             
-        if inter_T is not None and inter_S is not None:
-            sum_at_inter = sum(self.at_loss(inter_T[i], inter_S[i]) for i in range(len(inter_S)))
-            total_loss += 0.1 * sum_at_inter
+        # if inter_T is not None and inter_S is not None:
+        #     sum_at_inter = sum(self.at_loss(inter_T[i], inter_S[i]) for i in range(len(inter_S)))
+        #     total_loss += self.gamma * sum_at_inter
 
         return total_loss

@@ -40,21 +40,22 @@ def main(args):
 
     pretrained_teacher = 'robbyant/lingbot-depth-pretrain-vitl-14-v0.5'
     teacher = MDMModel.from_pretrained(pretrained_teacher).to(device='cuda')
-    student = MDMModel.from_pretrained_config().to(device='cuda')
+    # student = MDMModel.from_pretrained_config().to(device='cuda')
+    student = MDMModel.from_pretrained_config_small().to(device='cuda')
 
     teacher_weights = teacher.state_dict()
     student_weights = student.state_dict()
 
     weight_selection = {}
     for key in student_weights.keys():
-        if "head" in key:
+        if "encoder" in key:
             continue
         weight_selection[key] = uniform_element_selection(teacher_weights[key], student_weights[key].shape)
 
     if args.output_dir.endswith(".pt") or args.output_dir.endswith(".pth"):
         torch.save(weight_selection, os.path.join(args.output_dir))
     else:
-        torch.save(weight_selection, os.path.join(args.output_dir, f"init_tiny_2.pth"))
+        torch.save(weight_selection, os.path.join(args.output_dir, f"init_small.pth"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

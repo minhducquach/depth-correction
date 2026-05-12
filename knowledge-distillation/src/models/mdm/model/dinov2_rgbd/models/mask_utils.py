@@ -7,6 +7,7 @@ def depth_masking(
     depth_mask_threshold_ratio=None,
     depth_mask_threshold_num=None,
     valid_depth_range=(0.1, 10.0),
+    depth_mask_ratio=None
 ):
     """
     Perform patch masking based on depth validity
@@ -37,7 +38,8 @@ def depth_masking(
         patch_num_w,
         depth_mask_threshold_ratio,
         depth_mask_threshold_num,
-        valid_depth_range
+        valid_depth_range,
+        depth_mask_ratio
     )  # [B, N], True indicates this patch is invalid
 
     # Process each sample separately
@@ -71,7 +73,8 @@ def _compute_depth_invalid_mask(
     W_patch,
     threshold_ratio,
     threshold_num,
-    valid_range
+    valid_range,
+    depth_mask_ratio
 ):
     """
     Compute depth validity for each patch
@@ -109,29 +112,59 @@ def _compute_depth_invalid_mask(
     valid_depth = (depth_reshaped >= min_depth) & (depth_reshaped <= max_depth)
     valid_depth_ratio = valid_depth.float().mean(dim=-1)  # [B, N]
     valid_depth_num = valid_depth.float().sum(dim=-1)  # [B, N]
-
+    
     # Handle list-form thresholds (different thresholds for each sample in batch)
     if isinstance(threshold_ratio, list) or isinstance(threshold_num, list):
         invalid_mask = torch.zeros(B, N, dtype=torch.bool, device=device)
+        mixed_patches = torch.zeros(B, N, dtype=torch.bool, device=device)
         
         for i in range(B):
             tr = threshold_ratio[i] if isinstance(threshold_ratio, list) else threshold_ratio
             tn = threshold_num[i] if isinstance(threshold_num, list) else threshold_num
             
             sample_mask = torch.zeros(N, dtype=torch.bool, device=device)
+            sample_mixed = torch.zeros(N, dtype=torch.bool, device=device)
+
             if tr is not None:
                 sample_mask |= (valid_depth_ratio[i] < tr)
+                sample_mixed |= ((valid_depth_ratio[i] < 1.0) & (~sample_mask))
             if tn is not None:
                 sample_mask |= (valid_depth_num[i] < tn)
-            
+                sample_mixed |= ((valid_depth_num[i] < patch_h * patch_w) & (~sample_mask))
+
             invalid_mask[i] = sample_mask
+            mixed_patches[i] = sample_mixed
     else:
         # Uniform threshold
         invalid_mask = torch.zeros(B, N, dtype=torch.bool, device=device)
+        mixed_patches = torch.zeros(B, N, dtype=torch.bool, device=device)
         
         if threshold_ratio is not None:
             invalid_mask |= (valid_depth_ratio < threshold_ratio)
+            mixed_patches |= ((valid_depth_ratio < 1.0) & (~invalid_mask))
         if threshold_num is not None:
             invalid_mask |= (valid_depth_num < threshold_num)
-    
+            mixed_patches |= ((valid_depth_num < patch_h * patch_w) & (~invalid_mask))
+
+    if depth_mask_ratio is not None:
+        curr_mask_ratio = invalid_mask.float().sum(dim=-1) / N
+
+        for i in range(B):
+            curr_mask_ratio_i = curr_mask_ratio[i]
+            if curr_mask_ratio_i < depth_mask_ratio:
+                prob = 0.75
+                mixed_patches[i] &= (torch.rand(mixed_patches[i].shape, device=device) < prob)
+                invalid_mask[i, mixed_patches[i]] = True
+
+                curr_mask_ratio_i = invalid_mask[i].sum().item() / N
+                if curr_mask_ratio_i < depth_mask_ratio:
+                    diff = depth_mask_ratio - curr_mask_ratio_i
+                    num_patches = round(diff * N)
+                    valid_idx = torch.where(~invalid_mask[i])[0]
+                    if len(valid_idx) > num_patches:
+                        shuffle_idx = torch.randperm(len(valid_idx), device=device)[:num_patches]
+                        invalid_mask[i, valid_idx[shuffle_idx]] = True
+                    else:
+                        invalid_mask[i, valid_idx] = True
+
     return invalid_mask

@@ -19,6 +19,14 @@ from ..utils.geo import depth_to_pointcloud, normalized_view_plane_uv
 
 import copy
 
+class Adapter(nn.Module):
+    def __init__(self, num_in, num_out):
+        super().__init__()
+        self.adapter = nn.Conv2d(in_channels=num_in, out_channels=num_out, kernel_size=1)
+
+    def forward(self, x):
+        adapted_x = self.adapter(x)
+        return adapted_x
 
 class MDMModel(nn.Module):
     encoder: Union[DINOv2_RGBD_Encoder]
@@ -144,6 +152,65 @@ class MDMModel(nn.Module):
         model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny_2.pth'), strict=False)
         
         return model
+
+    @classmethod
+    def from_pretrained_config_small(
+        cls,
+        model_kwargs: Optional[Dict[str, Any]] = None, 
+        **hf_kwargs) -> 'MDMModel':
+        model_config = {
+            'encoder': {
+                'encode_type': 'DINOv2Encoder_vlmae', 
+                'backbone': 'dinov2_vits14', 
+                'intermediate_layers': [2, 5, 8, 11], 
+                'dim_out': 384, 
+                'strict': False, 
+                'depth_emb_mode': 'conv_1c', 
+                'img_depth_fuse_mode': 'cat_token'
+            }, 
+            'neck': {
+                'dim_in': [386, 2, 2, 2, 2], 
+                'dim_out': None, 
+                'dim_res_blocks': [384, 192, 96, 48, 24], 
+                'num_res_blocks': [0, 2, 2, 2, 0], 
+                'res_block_in_norm': 'none', 
+                'res_block_hidden_norm': 'none', 
+                'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']
+            }, 
+            'depth_head': {
+                'dim_in': [384, 192, 96, 48, 24], 
+                'dim_out': [None, None, None, None, 1], 
+                'dim_res_blocks': [384, 192, 96, 48, 24], 
+                'num_res_blocks': [0, 1, 1, 1, 0], 
+                'res_block_in_norm': 'none', 
+                'res_block_hidden_norm': 'none', 
+                'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']
+            }, 
+            'mask_head': {
+                'dim_in': [384, 192, 96, 48, 24], 
+                'dim_out': [None, None, None, None, 1], 
+                'dim_res_blocks': [384, 192, 96, 48, 24], 
+                'num_res_blocks': [0, 1, 1, 1, 0], 
+                'res_block_in_norm': 'none', 
+                'res_block_hidden_norm': 'none', 
+                'resamplers': ['conv_transpose', 'conv_transpose', 'conv_transpose', 'bilinear']
+            }, 
+            'remap_output': 'exp', 
+            'remap_depth_in': 'log', 
+            'remap_depth_out': 'linear', 
+            'num_tokens_range': [1200, 3600]
+        }
+        if model_kwargs is not None:
+            model_config.update(model_kwargs)
+        model = cls(**model_config)
+        
+        model.init_weights()
+        
+        init_path = '/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_small.pth'
+        if Path(init_path).exists():
+            model.load_state_dict(torch.load(init_path), strict=False)
+            
+        return model
             
     def init_weights(self):
         self.encoder.init_weights()
@@ -260,7 +327,7 @@ class MDMModel(nn.Module):
 
         # Forward pass
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16, enabled=use_fp16 and self.dtype != torch.bfloat16):
-            kwargs['enable_depth_mask'] = False
+            # kwargs['enable_depth_mask'] = False
             output, _, _, _ = self.forward(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
         depth_reg, mask = (output.get(k, None) for k in ['depth_reg', 'mask'])
 

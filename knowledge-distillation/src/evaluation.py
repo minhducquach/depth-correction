@@ -15,17 +15,52 @@ from data_modules.datamodule import MyDataModule
 from models.mdm.model.v2 import MDMModel
 from utils.metrics import compute_metrics
 
+from pathlib import Path
+
 torch.cuda.empty_cache()
 
 torch.manual_seed(16)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/added_lingbot_l1/mdm-distill-epoch=20-validation_loss=0.0610.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=11-validation_loss=0.0508.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+img_path = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/1739893136_240500000.png"
+depth_path = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/1739893136_240500000.npy"
 
 def get_num_tokens():
     min_tokens, max_tokens = 1200, 3600
     resolution_level = 0
     return int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
+
+def load_depth_map(depth_path, scale=1000.0):
+    """
+    Load depth map from PNG file (16-bit) and convert to meters.
+
+    Args:
+        depth_path (str): Path to depth image
+        scale (float): Scale factor to convert to meters
+            - 1000.0 for millimeters
+            - 1.0 for meters
+
+    Returns:
+        np.ndarray: Depth map in meters (H, W), float32
+    """
+    if not Path(depth_path).exists():
+        raise FileNotFoundError(f"Depth map not found: {depth_path}")
+
+    # Read depth map as 16-bit
+    # depth_map = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+    depth_map = np.load(depth_path)
+    if depth_map is None:
+        raise ValueError(f"Failed to read depth map: {depth_path}")
+
+    # Convert to meters
+    depth_map = depth_map.astype(np.float32) / scale                                                    
+
+    # Replace invalid values with 0
+    depth_map = np.nan_to_num(depth_map, nan=0.0, posinf=0.0, neginf=0.0)
+
+    return depth_map
 
 def depth_to_color_opencv(depth_map, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURBO):
     """
@@ -181,8 +216,8 @@ def evaluate_visual(o_model, d_model, dataloader, device):
             for i in range(len(random_indices)):
                 index = random_indices[i].item()
 
-                color = dataset[index]['color'].to(device, dtype=torch.bfloat16)
-                depth = dataset[index]['depth'].to(device, dtype=torch.bfloat16)
+                color = dataset[index]['color'].to(device)
+                depth = dataset[index]['depth'].to(device)
 
                 pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)['depth'].squeeze().float().cpu().numpy()
                 pred_d = d_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)['depth'].squeeze().float().cpu().numpy()
@@ -219,7 +254,7 @@ def evaluate_visual(o_model, d_model, dataloader, device):
 
 
     plt.tight_layout()
-    plt.savefig("../results/depth_comparison_val.png", dpi=150, bbox_inches='tight')
+    plt.savefig("../results/depth_comparison_ad1.png", dpi=150, bbox_inches='tight')
     print("Saved visualization to 'depth_comparison.png'")
     
     plt.show()
@@ -264,43 +299,6 @@ def evaluate_time_complexity(o_model, d_model, dataloader, device):
     print('Computational complexity of distilled model: ', macs_d)
     print('Number of parameters of distilled model: ', params_d)
 
-# def evaluate_time_complexity(o_model, d_model, device):
-    # o_model.eval()
-    # o_model.to(device)
-
-    # d_model.eval()
-    # d_model.to(device)
-
-    # num_tokens = get_num_tokens()
-    # # num_tokens = 3600
-
-    # def input_constructor(input_res):
-    #     image_input = torch.rand(1,3,504,504).to(device)
-    #     depth_input = torch.rand(1,504,504)
-    #     return dict(image=image_input, num_tokens=num_tokens, depth=depth_input)
-
-    # macs_o, params_o = get_model_complexity_info(
-    #     o_model,
-    #     (1,1,1,1), 
-    #     input_constructor=input_constructor,
-    #     as_strings=True,
-    #     print_per_layer_stat=False
-    # )
-
-    # macs_d, params_d = get_model_complexity_in/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=15-validation_loss=0.0795.ckptfo(
-    #     d_model,
-    #     (1,1,1,1), 
-    #     input_constructor=input_constructor,
-    #     as_strings=True,
-    #     print_per_layer_stat=True
-    # )
-
-    # print('Computational complexity of original model: ', macs_o)
-    # print('Number of parameters of original model: ', params_o)
-
-    # print('Computational complexity of distilled model: ', macs_d)
-    # print('Number of parameters of distilled model: ', params_d)
-
 def visualize_inter_map(o_model, d_model, device):
     o_model.eval()
     o_model.to(device)
@@ -319,33 +317,35 @@ def visualize_inter_map(o_model, d_model, device):
 
     with torch.autocast(device_type=device, dtype=torch.bfloat16):
         with torch.no_grad():
-            pred_o, o_vit_feats, o_depth_maps, cls_token_o = o_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[3,7,11,15,19,23])
-            pred_d, d_vit_feats, d_depth_maps, cls_token_d = d_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[1,3,5,7,9,11])
+            pred_o, o_vit_feats, o_depth_maps, cls_token_o = o_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[5,11,17,23])
+            pred_d, d_vit_feats, d_depth_maps, cls_token_d = d_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[2,5,8,11])
 
-            # if isinstance(o_vit_feats, list) and isinstance(d_vit_feats, list):
-            #     o_vit_feats = o_vit_feats[-1]
-            #     d_vit_feats = d_vit_feats[-1]
+            if isinstance(o_vit_feats, list) and isinstance(d_vit_feats, list):
+                o_vit_feats = o_vit_feats[-1]
+                d_vit_feats = d_vit_feats[-1]
 
-            # print(o_vit_feats.shape, d_vit_feats.shape)
+            # # print(o_vit_feats.shape, d_vit_feats.shape)
 
-            # fig, axs = plt.subplots(6, 8, figsize=(64,32))
+            # fig, axs = plt.subplots(3, 8, figsize=(64,32))
+            # for ax in axs.flat:
+            #     ax.axis('off')
 
             # # print(d_vit_feats.cpu().numpy().shape)
-            # print([m.shape for m in d_depth_maps])
-            # print([m.shape for m in o_depth_maps])
+            # # print([m.shape for m in d_depth_maps])
+            # # print([m.shape for m in o_depth_maps])                                                
             # # print(cls_token_d.cpu().numpy().shape)
 
-            # last_depth_map_d = d_depth_maps[-2].squeeze()
-            # last_depth_map_o = o_depth_maps[-2].squeeze()
+            # last_depth_map_d = d_depth_maps[-1].squeeze()
+            # last_depth_map_o = o_depth_maps[-1].squeeze()
 
             # for i in range(8):
-            #     depth_d = last_depth_map_d[i, :, :].float().cpu().numpy()
-            #     depth_o = last_depth_map_o[i*2, :, :].float().cpu().numpy()
-            #     depth_o_1 = last_depth_map_o[i*2+1, :, :].float().cpu().numpy()
+            #     depth_d = last_depth_map_o[i, :, :].float().cpu().numpy()
+            #     depth_d_1 = last_depth_map_o[i+8, :, :].float().cpu().numpy()
+            #     depth_d_2 = last_depth_map_o[i+16, :, :].float().cpu().numpy()
 
             #     axs[0, i].imshow(depth_d)
-            #     axs[1, i].imshow(depth_o)
-            #     axs[2, i].imshow(depth_o_1)
+            #     axs[1, i].imshow(depth_d_1)
+            #     axs[2, i].imshow(depth_d_2)
 
             # for i in range(8, 16):
             #     depth_d = last_depth_map_d[i, :, :].float().cpu().numpy()
@@ -356,72 +356,129 @@ def visualize_inter_map(o_model, d_model, device):
             #     axs[4, i-8].imshow(depth_o)
             #     axs[5, i-8].imshow(depth_o_1)
 
-            # fig, axs = plt.subplots()
+            fig, axs = plt.subplots(1, 2)
 
-            # B, C_t, H, W = o_vit_feats.shape
-            # _, C_s, _, _ = d_vit_feats.shape
+            B, C_t, H, W = o_vit_feats.shape
+            _, C_s, _, _ = d_vit_feats.shape
             
-            # # 1. PCA Visualization (Independent since dims differ)
-            # feat_t_flat = o_vit_feats[0].reshape(C_t, -1).permute(1, 0).float().cpu().numpy() # (1196, 1024)
-            # feat_s_flat = d_vit_feats[0].reshape(C_s, -1).permute(1, 0).float().cpu().numpy() # (1196, 192)
+            # 1. PCA Visualization (More than 3 components)
+            n_components = 3
+            feat_t_flat = o_vit_feats[-1].reshape(C_t, -1).permute(1, 0).float().cpu().numpy() # (1196, 1024)
+            feat_s_flat = d_vit_feats[-1].reshape(C_s, -1).permute(1, 0).float().cpu().numpy() # (1196, 192)
             
-            # pca_t = PCA(n_components=3).fit_transform(feat_t_flat)
-            # pca_s = PCA(n_components=3).fit_transform(feat_s_flat)
+            pca_t = PCA(n_components=n_components).fit_transform(feat_t_flat)
+            pca_s = PCA(n_components=n_components).fit_transform(feat_s_flat)
 
-            # print(pca_t.shape)
+            print(pca_t.shape)
             
-            # # Normalize for RGB viewing independently
-            # t_min, t_max = pca_t.min(axis=0), pca_t.max(axis=0)
-            # s_min, s_max = pca_s.min(axis=0), pca_s.max(axis=0)
-            # pca_t = (pca_t - t_min) / (t_max - t_min + 1e-8)
-            # pca_s = (pca_s - s_min) / (s_max - s_min + 1e-8)
+            # Normalize independently
+            t_min, t_max = pca_t.min(axis=0), pca_t.max(axis=0)
+            s_min, s_max = pca_s.min(axis=0), pca_s.max(axis=0)
+            pca_t = (pca_t - t_min) / (t_max - t_min + 1e-8)
+            pca_s = (pca_s - s_min) / (s_max - s_min + 1e-8)
             
-            # pca_img_t = pca_t.reshape(H, W, 3)
-            # pca_img_s = pca_s.reshape(H, W, 3)
-            
-            # Plotting
-            fig, axs = plt.subplots(len(o_vit_feats), 2, figsize=(14, 10))
-            axs[0,0].set_title("Teacher AT")
-            axs[0,1].set_title("Student AT")
-            
-            # axs[0].imshow(pca_img_t)
-            # axs[0].set_title("Teacher ViT Features (PCA - 1024D)")
-            # axs[0].axis('off')
-            
-            # axs[1].imshow(pca_img_s)
-            # axs[1].set_title("Student ViT Features (PCA - 192D)")
-            # axs[1].axis('off')
+            pca_img_t = pca_t.reshape(H, W, n_components)
+            pca_img_s = pca_s.reshape(H, W, n_components)
 
-            def at(x):
-                return x.pow(2).mean(0)
+            axs[0].imshow(pca_img_t)
+            axs[0].set_title("Teacher ViT Features (PCA - 1024D)")
+            axs[0].axis('off')
             
-            for i in range(len(o_vit_feats)):
+            axs[1].imshow(pca_img_s)
+            axs[1].set_title("Student ViT Features (PCA - 192D)")
+            axs[1].axis('off')
             
-                at_t = cv2.normalize(at(o_vit_feats[i][0]).float().cpu().numpy(), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
-                # at_t = cv2.resize(at_t, (848, 480), interpolation=cv2.INTER_CUBIC)
-
-                at_s = cv2.normalize(at(d_vit_feats[i][0]).float().cpu().numpy(), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
-                # at_s = cv2.resize(at_s, (848, 480), interpolation=cv2.INTER_CUBIC)
-
-                # at_t = cv2.normalize(cv2.resize(at(o_vit_feats[0]).float().cpu().numpy(), (848, 480)), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
-                # at_s = cv2.normalize(cv2.resize(at(d_vit_feats).float().cpu().numpy(), (848, 480)), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
-
-                # print(at_t * 255.0)
-                # print(at_t)
-
-                # heatmap_att = cv2.addWeighted(np.asarray(color[:,:,1], dtype=np.float32), 0.7, np.asarray(at_t, dtype=np.float32), 0.3, 0)
-
-                axs[i,0].imshow(at_t, interpolation='bicubic')
-                # axs[0].set_title("Teacher AT")
-                axs[i,0].axis('off')
+            # # Plotting individual components
+            # fig_pca, axs_pca = plt.subplots(n_components, 2, figsize=(10, 3 * n_components))
+            # for i in range(n_components):
+            #     axs_pca[i, 0].imshow(pca_img_t[..., i], cmap='viridis')
+            #     axs_pca[i, 0].set_title(f"Teacher PC {i+1}")
+            #     axs_pca[i, 0].axis('off')
                 
-                axs[i,1].imshow(at_s, interpolation='bicubic')
-                # axs[1].set_title("Student AT")
-                axs[i,1].axis('off')
+            #     axs_pca[i, 1].imshow(pca_img_s[..., i], cmap='viridis')
+            #     axs_pca[i, 1].set_title(f"Student PC {i+1}")
+            #     axs_pca[i, 1].axis('off')
+                
+            # Setup for Attention Transfer Visualization (commented code below)
+            # fig, axs = plt.subplots(len(o_vit_feats), 2, figsize=(14, 10))
+
+            # def at(x):
+            #     return x.pow(2).mean(0)
+            
+            # for i in range(len(o_vit_feats)):
+            
+            #     at_t = cv2.normalize(at(o_vit_feats[i][0]).float().cpu().numpy(), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+            #     # at_t = cv2.resize(at_t, (848, 480), interpolation=cv2.INTER_CUBIC)
+
+            #     at_s = cv2.normalize(at(d_vit_feats[i][0]).float().cpu().numpy(), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+            #     # at_s = cv2.resize(at_s, (848, 480), interpolation=cv2.INTER_CUBIC)
+
+            #     # at_t = cv2.normalize(cv2.resize(at(o_vit_feats[0]).float().cpu().numpy(), (848, 480)), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+            #     # at_s = cv2.normalize(cv2.resize(at(d_vit_feats).float().cpu().numpy(), (848, 480)), None, 0, 255, cv2.NORM_MINMAX).astype(np.float32)
+
+            #     # print(at_t * 255.0)
+            #     # print(at_t)
+
+            #     # heatmap_att = cv2.addWeighted(np.asarray(color[:,:,1], dtype=np.float32), 0.7, np.asarray(at_t, dtype=np.float32), 0.3, 0)
+
+            #     axs[i,0].imshow(at_t, interpolation='bicubic')
+            #     # axs[0].set_title("Teacher AT")
+            #     axs[i,0].axis('off')
+                
+            #     axs[i,1].imshow(at_s, interpolation='bicubic')
+            #     # axs[1].set_title("Student AT")
+            #     axs[i,1].axis('off')
                             
             plt.tight_layout()
             plt.show()
 
+def evaluate_mde(color_path, model, device):
+    img = cv2.imread(color_path)
+    img = cv2.resize(img, (848, 480))
+    img_tensor = torch.tensor(img / 255.0, dtype=torch.float32, device=device).permute(2,0,1)[None]
+    h, w = img_tensor.shape[2], img_tensor.shape[3]
+    depth_holder = torch.zeros((h, w), dtype=torch.float32, device=device)[None]
+
+    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+        with torch.no_grad():
+            output = model.infer(img_tensor, depth_in=depth_holder, num_tokens=1200)
+    
+    depth_pred = output["depth"].squeeze().float().cpu().numpy()
+
+    fig, axs = plt.subplots(1, 2)
+    axs[0].imshow(img)
+    axs[1].imshow(depth_to_color_opencv(depth_pred))
+    axs[0].axis('off')
+    axs[1].axis('off')
+    plt.tight_layout()
+    plt.show()
+
+def evaluate_single_img(color_path, depth_path, model, device):
+    img = cv2.imread(color_path)
+    img = cv2.resize(img, (848, 480))
+    img_tensor = torch.tensor(img / 255.0, dtype=torch.float32, device=device).permute(2,0,1)[None]
+
+    # depth_np = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) / 100.0
+    depth_np = load_depth_map(depth_path)
+    depth_np = cv2.resize(depth_np, (848, 480), interpolation=cv2.INTER_NEAREST)
+
+    depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None]
+
+    with torch.autocast(device_type=device, dtype=torch.bfloat16):
+        with torch.no_grad():
+            output = model.infer(img_tensor, depth_in=depth_tensor, num_tokens=1200)
+    
+    depth_pred = output["depth"].squeeze().float().cpu().numpy()
+
+    fig, axs = plt.subplots(1, 3)
+    axs[0].imshow(img)
+    axs[1].imshow(depth_to_color_opencv(depth_np))
+    axs[2].imshow(depth_to_color_opencv(depth_pred))
+    axs[0].axis('off')
+    axs[1].axis('off')
+    axs[2].axis('off')
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     data_module = MyDataModule()
@@ -433,15 +490,19 @@ if __name__ == "__main__":
     original_model = MDMModel.from_pretrained().to(device)
     original_model.eval()
 
-    distilled_model = MDMModel.from_pretrained_config()
+    distilled_model = MDMModel.from_pretrained_config_small()
     distilled_model.load_state_dict(extract_weights_from_ckpt(ckpt))
     distilled_model = distilled_model.to(device)
     distilled_model.eval()
 
     # evaluate_metrics(original_model, distilled_model, test_dataset, device)
 
-    # evaluate_visual(original_model, distilled_model, test_dataset, device)
+    evaluate_visual(original_model, distilled_model, test_dataset, device)
 
     # evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
 
-    visualize_inter_map(original_model, distilled_model,  device)
+    # visualize_inter_map(original_model, distilled_model,  device)
+
+    # evaluate_mde(color_path=img_path, model=distilled_model, device=device)
+
+    # evaluate_single_img(color_path=img_path, depth_path=depth_path, model=distilled_model, device=device)

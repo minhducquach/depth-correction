@@ -3,14 +3,21 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 from math import pi
+import scipy.io as sio
 
 from numpy import random
+import os
+import glob
 
 rng = np.random.default_rng(seed=42)
 
 SCALE = 1.0
 
-PATH = "/home/quachmd/Desktop/depth-correction/playground/000000_lcam_front_depth.png"
+# PATH = "/home/quachmd/Desktop/depth-correction/playground/000000_lcam_front_depth.png"
+PATHS = [
+    "/home/quachmd/Bureau/depth-correction/datasets/diode-val/val",
+    "/home/quachmd/Bureau/depth-correction/datasets/iBims-1"
+]
 
 BASELINE = 54.8 if SCALE == 1000 else 0.0548
 HORIZONTAL_FOV = 87
@@ -18,6 +25,7 @@ FOCAL_LENGTH = 1280 / (2 * np.tan((HORIZONTAL_FOV * pi / 180)/2))
 
 def read_decode_depth(depthpath):
     depth_rgba = cv2.imread(depthpath, cv2.IMREAD_UNCHANGED)
+    # Decode as little-endian 32-bit float
     depth = depth_rgba.view("<f4")
     return np.squeeze(depth, axis=-1)
     # return depth_rgba
@@ -77,10 +85,30 @@ def load_depth_map(depth_path, scale=SCALE):
         raise FileNotFoundError(f"Depth map not found: {depth_path}")
 
     # Read depth map
-    depth_map = read_decode_depth(depth_path)
-    depth_map = cv2.resize(depth_map, (1280, 720), interpolation=cv2.INTER_NEAREST)
+    # depth_map = read_decode_depth(depth_path)
+    if depth_path.endswith('.npy'):
+        depth_map = np.load(depth_path)
+    elif depth_path.endswith('.mat'):
+        mat_data = sio.loadmat(depth_path)
+        # Check if it matches the iBims-1 structured array format
+        if 'data' in mat_data and isinstance(mat_data['data'], np.ndarray) and 'depth' in mat_data['data'].dtype.names:
+            depth_map = mat_data['data']['depth'][0, 0]
+        else:
+            # Standard fallback for flat .mat files
+            depth_map = mat_data.get('depth')
+            if depth_map is None:
+                # Fallback: grab the first valid numpy array if 'depth' isn't found
+                for key, val in mat_data.items():
+                    if not key.startswith('__') and isinstance(val, np.ndarray):
+                        depth_map = val
+                        break
+    else:
+        depth_map = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+
     if depth_map is None:
         raise ValueError(f"Failed to read depth map: {depth_path}")
+        
+    depth_map = cv2.resize(depth_map, (1280, 720), interpolation=cv2.INTER_NEAREST)
 
     # Convert to meters
     depth_map = depth_map.astype(np.float32) / scale
@@ -95,138 +123,159 @@ def calc_shift(depth_value):
     return (FOCAL_LENGTH * BASELINE) / depth_value
 
 if __name__ == "__main__":
-    depth_mat = load_depth_map(PATH)
+    for path in PATHS:
+        rgb_pattern = os.path.join(path, '**', '*.png')
+        rgb_files = sorted(glob.glob(rgb_pattern, recursive=True))
 
-    # Create black canvas
-    imperfect_depth = np.copy(depth_mat)
-    buffer = np.zeros_like(depth_mat, dtype=np.float32)
+        depth_files = []
 
-    rows, cols = depth_mat.shape
-
-    idx = np.argsort(depth_mat, axis=None)
-    # print(depth_mat.shape)
-    sorted_mat = depth_mat.flatten()[idx]
-
-    res = np.unique(sorted_mat)[-2:]
-    # print(res)
-
-    background_depth = res[-1] if res[-1] != 65.535 else res[-2]
-    # print(background_depth)
-
-    # Disparity holes
-
-    # Fill in buffer for right img (left->right)
-    for i in range(rows):
-        for j in range(cols):
-            depth_val = imperfect_depth[i, j]
-            
-            if depth_val <= 0:
-                continue
-                
-            shift = calc_shift(depth_val)
-            j_right = int(round(j - shift))
-
-            if 0 <= j_right < cols:
-                if shift > buffer[i, j_right]:
-                    buffer[i, j_right] = shift
-
-
-    # Check consistency (right->left) 
-    for i in range(rows):
-        for j in range(cols):
-            depth_val = imperfect_depth[i, j]
-            
-            if depth_val <= 0:
-                continue
-                
-            shift = calc_shift(depth_val)
-            j_right = int(round(j - shift))
-
-            # 1. If it shifted off-screen, it's a hole (the border effect)
-            if j_right < 0 or j_right >= cols:
-                imperfect_depth[i, j] = 0
+        for rgb in rgb_files:
+            # if mat found
+            if glob.glob(os.path.join(path, '**', '*.mat')):
+                depth_file = rgb.replace('rgb', 'ibims1_core_mat')
+                depth_file = depth_file.replace('.png', '.mat')
+            # if npy
             else:
-                # 2. If the buffer at that spot has a larger shift, this pixel is occluded
-                if buffer[i, j_right] > (shift + 0.5):
-                    # imperfect_depth[i, j] = 0
-                    # Shadow
-                    depth_right = (FOCAL_LENGTH * BASELINE) / buffer[i, j_right]
-                    shadow = (BASELINE * (background_depth - depth_right)) / depth_right
-                    shadow_pixels = (shadow * 1280) / (2 * depth_right * np.tan((HORIZONTAL_FOV * pi / 180)/2))
-                    imperfect_depth[i, j - int(round(shadow_pixels)): j] = 0
+                depth_file = rgb.replace('.png', '_depth.npy')
+        
+            depth_files.append(depth_file)
+
+        for rgb_file, depth_file in zip(rgb_files, depth_files):     
+            depth_mat = load_depth_map(depth_file)
+
+            # Create black canvas
+            imperfect_depth = np.copy(depth_mat)
+            buffer = np.zeros_like(depth_mat, dtype=np.float32)
+
+            rows, cols = depth_mat.shape
+
+            idx = np.argsort(depth_mat, axis=None)
+            # print(depth_mat.shape)
+            sorted_mat = depth_mat.flatten()[idx]
+
+            res = np.unique(sorted_mat)[-2:]
+            # print(res)
+
+            background_depth = res[-1] if res[-1] != 65.535 else res[-2]
+            # print(background_depth)
+
+            # Disparity holes
+
+            # Fill in buffer for right img (left->right)
+            for i in range(rows):
+                for j in range(cols):
+                    depth_val = imperfect_depth[i, j]
+                    
+                    if depth_val <= 0:
+                        continue
+                        
+                    shift = calc_shift(depth_val)
+                    j_right = int(round(j - shift))
+
+                    if 0 <= j_right < cols:
+                        if shift > buffer[i, j_right]:
+                            buffer[i, j_right] = shift
+
+
+            # Check consistency (right->left) 
+            for i in range(rows):
+                for j in range(cols):
+                    depth_val = imperfect_depth[i, j]
+                    
+                    if depth_val <= 0:
+                        continue
+                        
+                    shift = calc_shift(depth_val)
+                    j_right = int(round(j - shift))
+
+                    # 1. If it shifted off-screen, it's a hole (the border effect)
+                    if j_right < 0 or j_right >= cols:
+                        imperfect_depth[i, j] = 0
+                    else:
+                        # 2. If the buffer at that spot has a larger shift, this pixel is occluded
+                        if buffer[i, j_right] > (shift + 0.5):
+                            # imperfect_depth[i, j] = 0
+                            # Shadow
+                            depth_right = (FOCAL_LENGTH * BASELINE) / buffer[i, j_right]
+                            shadow = (BASELINE * (background_depth - depth_right)) / depth_right
+                            shadow_pixels = (shadow * 1280) / (2 * depth_right * np.tan((HORIZONTAL_FOV * pi / 180)/2))
+                            imperfect_depth[i, j - int(round(shadow_pixels)): j] = 0
+                    
+            imperfect_depth[imperfect_depth < 0.53] = 0
+
+            vert_edges = cv2.Sobel(imperfect_depth, cv2.CV_32F, 1, 0, ksize=7)
             
-    imperfect_depth[imperfect_depth < 0.53] = 0
+            # Axial noise
+            kernel_size = 51
+            col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
+            col_kernel = col_kernel / col_kernel.max()
+            row_kernel = np.transpose(col_kernel)
+            gaussian_kernel = col_kernel * row_kernel
 
-    vert_edges = cv2.Sobel(imperfect_depth, cv2.CV_32F, 1, 0, ksize=7)
-    
-    # Axial noise
-    kernel_size = 51
-    col_kernel = cv2.getGaussianKernel(kernel_size, kernel_size / 3)
-    col_kernel = col_kernel / col_kernel.max()
-    row_kernel = np.transpose(col_kernel)
-    gaussian_kernel = col_kernel * row_kernel
+            for i in range(5000):
+                row = rng.integers(0, rows - kernel_size)
+                col = rng.integers(0, cols - kernel_size)
 
-    for i in range(5000):
-        row = rng.integers(0, rows - kernel_size)
-        col = rng.integers(0, cols - kernel_size)
+                noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(kernel_size//2), col+int(kernel_size//2)] + 0.003949 * imperfect_depth[row+int(kernel_size//2), col+int(kernel_size//2)] ** 2)
+                patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
+                noise_matrix = (gaussian_kernel * noise_power)
+                # noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
 
-        noise_power = (0.001063 + 0.0007278 * imperfect_depth[row+int(kernel_size//2), col+int(kernel_size//2)] + 0.003949 * imperfect_depth[row+int(kernel_size//2), col+int(kernel_size//2)] ** 2)
-        patch = imperfect_depth[row:row+kernel_size, col:col+kernel_size]
-        noise_matrix = (gaussian_kernel * noise_power)
-        # noise_matrix = np.clip(noise_matrix, a_min=None, a_max=2.0)
+                mask = patch > 0
+                patch[mask] = patch[mask] + noise_matrix[mask]
+            
+            # Lateral noise
+            kernel_size = 3
 
-        mask = patch > 0
-        patch[mask] = patch[mask] + noise_matrix[mask]
-    
-    # Lateral noise
-    kernel_size = 3
+            imperfect_depth_resized = cv2.resize(imperfect_depth, (cols // 2, rows // 2), interpolation=cv2.INTER_NEAREST)
+            resized_rows, resized_cols = imperfect_depth_resized.shape
 
-    imperfect_depth_resized = cv2.resize(imperfect_depth, (cols // 2, rows // 2), interpolation=cv2.INTER_NEAREST)
-    resized_rows, resized_cols = imperfect_depth_resized.shape
+            sobel_vert_edges = cv2.Sobel(imperfect_depth_resized, cv2.CV_32F, 1, 0, ksize=7)
+            sobel_hori_edges = cv2.Sobel(imperfect_depth_resized, cv2.CV_32F, 0, 1, ksize=7)
 
-    sobel_vert_edges = cv2.Sobel(imperfect_depth_resized, cv2.CV_32F, 1, 0, ksize=7)
-    sobel_hori_edges = cv2.Sobel(imperfect_depth_resized, cv2.CV_32F, 0, 1, ksize=7)
+            edge_mask = (np.abs(sobel_vert_edges) > 2048/4) | (np.abs(sobel_hori_edges) > 2048/4)
 
-    edge_mask = (np.abs(sobel_vert_edges) > 2048/4) | (np.abs(sobel_hori_edges) > 2048/4)
+            directions = np.array([
+                [0, -1], [0, 1], [-1, 0], [1, 0], 
+                [-1, -1], [1, -1], [-1, 1], [1, 1]
+            ])
 
-    directions = np.array([
-        [0, -1], [0, 1], [-1, 0], [1, 0], 
-        [-1, -1], [1, -1], [-1, 1], [1, 1]
-    ])
+            for i in range(0, resized_rows-kernel_size, kernel_size):
+                for j in range(0, resized_cols-kernel_size, kernel_size):
+                    if edge_mask[i+kernel_size//2, j+kernel_size//2]:
+                        direction = directions[rng.integers(0, len(directions))]
+                        shift = 1
+                        patch = imperfect_depth_resized[i:i+kernel_size, j:j+kernel_size]
+                        i_shift = direction[0] * shift + i
+                        j_shift = direction[1] * shift + j
+                        if 0 <= i_shift < resized_rows - kernel_size and 0 <= j_shift < resized_cols - kernel_size:
+                            patch_shift = imperfect_depth_resized[i_shift:i_shift+kernel_size, j_shift:j_shift+kernel_size]
+                            # mask = (patch > 0) & (patch_shift > 0)
+                            # patch[mask] = patch_shift[mask]
+                            imperfect_depth_resized[i:i+kernel_size, j:j+kernel_size] = patch_shift
 
-    for i in range(0, resized_rows-kernel_size, kernel_size):
-        for j in range(0, resized_cols-kernel_size, kernel_size):
-            if edge_mask[i+kernel_size//2, j+kernel_size//2]:
-                direction = directions[rng.integers(0, len(directions))]
-                shift = 1
-                patch = imperfect_depth_resized[i:i+kernel_size, j:j+kernel_size]
-                i_shift = direction[0] * shift + i
-                j_shift = direction[1] * shift + j
-                if 0 <= i_shift < resized_rows - kernel_size and 0 <= j_shift < resized_cols - kernel_size:
-                    patch_shift = imperfect_depth_resized[i_shift:i_shift+kernel_size, j_shift:j_shift+kernel_size]
-                    # mask = (patch > 0) & (patch_shift > 0)
-                    # patch[mask] = patch_shift[mask]
-                    imperfect_depth_resized[i:i+kernel_size, j:j+kernel_size] = patch_shift
+            imperfect_depth = cv2.resize(imperfect_depth_resized, (cols, rows), interpolation=cv2.INTER_NEAREST)
 
-    imperfect_depth = cv2.resize(imperfect_depth_resized, (cols, rows), interpolation=cv2.INTER_NEAREST)
+            hole_mask = imperfect_depth == 0
 
-    hole_mask = imperfect_depth == 0
+            # Gaussian blur
+            imperfect_depth = cv2.GaussianBlur(imperfect_depth, (5, 5), 0)
+            imperfect_depth[hole_mask] = 0
 
-    # Gaussian blur
-    imperfect_depth = cv2.GaussianBlur(imperfect_depth, (5, 5), 0)
-    imperfect_depth[hole_mask] = 0
+            # Remove vertical edges
+            imperfect_depth[np.abs(vert_edges) > 2048/4] = 0
 
-    # Remove vertical edges
-    imperfect_depth[np.abs(vert_edges) > 2048/4] = 0
+            # depth_ori = depth_to_color_opencv(depth_mat)
+            # depth_sim = depth_to_color_opencv(imperfect_depth)
 
-    depth_ori = depth_to_color_opencv(depth_mat)
-    depth_sim = depth_to_color_opencv(imperfect_depth)
-
-    plt.figure(figsize=(10, 6))
-    plt.subplot(1, 2, 1)
-    plt.imshow(depth_ori[:, :, ::-1]) # BGR -> RGB by reading in reverse
-    plt.subplot(1, 2, 2)
-    plt.imshow(depth_sim[:, :, ::-1])
-    plt.show()
-
-
+            # plt.figure(figsize=(10, 6))
+            # plt.subplot(1, 2, 1)
+            # plt.imshow(depth_ori[:, :, ::-1]) # BGR -> RGB by reading in reverse
+            # plt.subplot(1, 2, 2)
+            # plt.imshow(depth_sim[:, :, ::-1])
+            # plt.show()
+            if depth_file.endswith('.mat'):
+                save_name = depth_file.replace('.mat', '_processed.npy')
+            elif depth_file.endswith('.npy'):
+                save_name = depth_file.replace('.npy', '_processed.npy')
+            np.save(save_name, imperfect_depth)

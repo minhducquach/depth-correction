@@ -5,6 +5,7 @@ import onnxruntime as ort
 import tensorrt as trt
 import pycuda.driver as cuda
 import pycuda.autoinit
+import time
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 
@@ -111,7 +112,10 @@ align = rs.align(align_to)
 engine = load_normal_engine("/home/quachmd/Bureau/depth-correction/convert-onnx/model.trt")
 context = engine.create_execution_context()
 
+inputs, outputs, stream = allocate_buffer(engine)
+
 while True:
+    start_time = time.time()
     frame = pipe.wait_for_frames()
 
     aligned_frames = align.process(frame)
@@ -139,8 +143,6 @@ while True:
         "depth": depth_np
     }
 
-    inputs, outputs, stream = allocate_buffer(engine)
-
     for inp in inputs:
         name = inp["name"]
         if inp["name"] in input:
@@ -166,11 +168,16 @@ while True:
     # print(color_image)
     # break
 
+    # Calculate and display FPS
+    end_time = time.time()
+    fps = 1 / (end_time - start_time)
+    cv2.putText(color_image, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
     cv2.imshow('rgb', color_image)
     cv2.imshow('depth', depth_m)
     cv2.imshow('pred', depth_pred)
 
-    if cv2.waitKey(33) == ord('q'):
+    if cv2.waitKey(1) == ord('q'):
         np.save("depth.npy", depth_image * depth_scale)
         cv2.imwrite("depth.png", depth_m)
         cv2.imwrite("color.png", color_image)
