@@ -1,21 +1,91 @@
 import pyrealsense2 as rs
 import numpy as np
 import cv2
-import onnxruntime as ort
 import tensorrt as trt
 import pycuda.driver as cuda
-import pycuda.autoinit
+import threading
+import queue
 import time
 
 TRT_LOGGER = trt.Logger(trt.Logger.INFO)
 
-def load_normal_engine(engine_path: str) -> trt.ICudaEngine:
+input_queue = queue.Queue(maxsize=2)
+output_queue = queue.Queue(maxsize=2)
+is_running = True
+
+def depth_to_color(depth_map, colormap=cv2.COLORMAP_TURBO):
+    valid_mask = np.isfinite(depth_map) & (depth_map > 0)
+    depth_clean = np.where(valid_mask, depth_map, 0).astype(np.float32)
+    
+    depth_normalized = np.zeros_like(depth_clean, dtype=np.uint8)
+    if valid_mask.any():
+        cv2.normalize(depth_clean, depth_normalized, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U, mask=valid_mask.astype(np.uint8))
+    
+    depth_colored = cv2.applyColorMap(depth_normalized, colormap)
+    depth_colored[~valid_mask] = [0, 0, 0]
+    return depth_colored
+
+def capture_thread_func():
+    global is_running
+    
+    pipe = rs.pipeline()
+    cfg = rs.config()
+    cfg.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
+    cfg.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+    
+    profile = pipe.start(cfg)
+    depth_scale = profile.get_device().first_depth_sensor().get_depth_scale()
+    align = rs.align(rs.stream.color)
+
+    while is_running:
+        frame = pipe.wait_for_frames()
+        aligned_frames = align.process(frame)
+
+        depth_frame = aligned_frames.get_depth_frame()
+        color_frame = aligned_frames.get_color_frame()
+        if not depth_frame or not color_frame:
+            continue
+
+        color_image = np.asanyarray(color_frame.get_data())
+        depth_image = np.asanyarray(depth_frame.get_data()).astype(np.float32)
+
+        # Fast OpenCV Preprocessing
+        img_np = cv2.dnn.blobFromImage(color_image, scalefactor=1.0/255.0, size=(848, 480), swapRB=False, crop=False)
+        
+        depth_np = depth_image * depth_scale
+        depth_np = np.expand_dims(depth_np, axis=(0, 1)) # Shape to (1, 1, 480, 848)
+
+        # Bundle data and push to queue. If queue is full, this blocks safely.
+        payload = {
+            "image": img_np,
+            "depth": depth_np,
+            "raw_color": color_image,
+            "raw_depth": depth_image * depth_scale
+        }
+        
+        try:
+            input_queue.put(payload, timeout=1)
+        except queue.Full:
+            continue # Drop frame if inference is lagging
+
+    pipe.stop()
+
+def inference_thread_func(engine_path):
+    global is_running
+    
+    # 1. Initialize CUDA specifically inside this thread
+    cuda.init()
+    device = cuda.Device(0)
+    cuda_context = device.make_context()
+    
+    # 2. Load Engine
     runtime = trt.Runtime(TRT_LOGGER)
     with open(engine_path, "rb") as plan:
         engine = runtime.deserialize_cuda_engine(plan.read())
-        return engine
+        
+    context = engine.create_execution_context()
     
-def allocate_buffer(engine):
+    # 3. Allocate Zero-Copy Buffers
     inputs, outputs = [], []
     stream = cuda.Stream()
 
@@ -25,162 +95,105 @@ def allocate_buffer(engine):
         dtype = trt.nptype(engine.get_tensor_dtype(name))
         volume = trt.volume(shape)
 
-        host_mem = cuda.pagelocked_empty(volume, dtype)
-        device_mem = cuda.mem_alloc(host_mem.nbytes)
+        host_mem = cuda.pagelocked_empty(volume, dtype, mem_flags=cuda.host_alloc_flags.DEVICEMAP)
+        device_ptr = np.intp(host_mem.base.get_device_pointer())
 
         if engine.get_tensor_mode(name) == trt.TensorIOMode.INPUT:
-            inputs.append({'name': name, 'host': host_mem, 'device': device_mem, 'shape': shape})
+            inputs.append({'name': name, 'host': host_mem, 'device': device_ptr})
         else:
-            outputs.append({'name': name, 'host': host_mem, 'device': device_mem, 'shape': shape})
+            outputs.append({'name': name, 'host': host_mem, 'device': device_ptr})
 
-    return inputs, outputs, stream
+    while is_running:
+        try:
+            data = input_queue.get(timeout=1)
+        except queue.Empty:
+            continue
 
-def do_inference(context, inputs, outputs, stream):
-    for inp in inputs:
-        cuda.memcpy_htod_async(inp["device"], inp["host"], stream)
-        context.set_tensor_address(inp["name"], int(inp["device"]))
+        for inp in inputs:
+            if inp["name"] in data:
+                np.copyto(inp["host"], data[inp["name"]].ravel())
+                context.set_tensor_address(inp["name"], int(inp["device"]))
 
-    for out in outputs:
-        context.set_tensor_address(out["name"], int(out["device"]))
+        for out in outputs:
+            context.set_tensor_address(out["name"], int(out["device"]))
 
-    context.execute_async_v3(stream_handle=stream.handle)
+        # Execute on GPU
+        context.execute_async_v3(stream_handle=stream.handle)
+        stream.synchronize()
 
-    for out in outputs:
-        cuda.memcpy_dtoh_async(out["host"], out["device"], stream)
+        # Extract results
+        depth_out = outputs[0]["host"].reshape(480, 848).copy()
+        mask_out = outputs[1]["host"].reshape(480, 848).copy()
 
-    stream.synchronize()
+        try:
+            output_queue.put({
+                "depth_pred": depth_out,
+                "mask_pred": mask_out,
+                "raw_color": data["raw_color"],
+                "raw_depth": data["raw_depth"]
+            }, timeout=1)
+        except queue.Full:
+            continue
 
-    return [out["host"] for out in outputs]
+    # Cleanup CUDA context when shutting down
+    cuda_context.pop()
 
-def depth_to_color_opencv(depth_map, vmin=0, vmax=20, colormap=cv2.COLORMAP_TURBO):
-    """
-    Convert depth map to color visualization using OpenCV colormap.
+if __name__ == "__main__":
+    engine_path = "/home/quachmd/Bureau/depth-correction/convert-onnx/model.trt"
 
-    Args:
-        depth_map (np.ndarray): Depth map (H, W)
-        vmin (float): Minimum depth for colormap (auto if None)
-        vmax (float): Maximum depth for colormap (auto if None)
-        colormap: OpenCV colormap (TURBO, JET, VIRIDIS, etc.)
+    # Start Threads
+    capture_thread = threading.Thread(target=capture_thread_func)
+    inference_thread = threading.Thread(target=inference_thread_func, args=(engine_path,))
+    
+    capture_thread.start()
+    inference_thread.start()
 
-    Returns:
-        np.ndarray: Colored depth map (H, W, 3) in BGR format
-    """
-    # Handle invalid values
-    valid_mask = np.isfinite(depth_map) & (depth_map > 0)
-    depth_clean = depth_map.copy()
-    depth_clean[~valid_mask] = 0
+    print("Pipeline started. Press 'q' to quit.")
 
-    # Auto-range if not specified
-    if vmin is None:
-        vmin = depth_clean[valid_mask].min() if valid_mask.any() else 0
-    if vmax is None:
-        vmax = depth_clean[valid_mask].max() if valid_mask.any() else 1
+    last_time = time.time()
+    
+    while is_running:
+        try:
+            # Get processed data
+            res = output_queue.get(timeout=0.1)
+        except queue.Empty:
+            continue
+            
+        current_time = time.time()
+        fps = 1.0 / (current_time - last_time)
+        last_time = current_time
 
-    # Normalize to [0, 255]
-    depth_normalized = np.clip(
-        (depth_clean - vmin) / (vmax - vmin + 1e-8) * 255,
-        0, 255
-    ).astype(np.uint8)
+        depth_out = res["depth_pred"]
+        mask_out = res["mask_pred"]
+        color_image = res["raw_color"]
+        
+        # Post-process
+        binary_mask = mask_out > 0.5
+        depth_out = np.where(binary_mask, depth_out, np.inf)
+        
+        # Fast C++ Color mapping
+        depth_pred_colored = depth_to_color(depth_out)
+        depth_raw_colored = depth_to_color(res["raw_depth"])
 
-    # Apply colormap
-    depth_colored = cv2.applyColorMap(depth_normalized, colormap)
+        # Display FPS
+        cv2.putText(color_image, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    # Set invalid pixels to black
-    depth_colored[~valid_mask] = [0, 0, 0]
+        # Show images
+        cv2.imshow('rgb', color_image)
+        cv2.imshow('depth', depth_raw_colored)
+        cv2.imshow('pred', depth_pred_colored)
 
-    return depth_colored
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            print("Shutting down...")
+            is_running = False
 
-pipe = rs.pipeline()
-cfg  = rs.config()
+            np.save("depth.npy", res["raw_depth"])
+            cv2.imwrite("depth.png", depth_raw_colored)
+            cv2.imwrite("color.png", color_image)
+            break
 
-cfg.enable_stream(rs.stream.color, 848,480, rs.format.bgr8, 30)
-cfg.enable_stream(rs.stream.depth, 848,480, rs.format.z16, 30)
-
-profile = pipe.start(cfg)
-
-depth_sensor = profile.get_device().first_depth_sensor()
-depth_scale = depth_sensor.get_depth_scale()
-print("Depth Scale is: " , depth_scale)
-
-align_to = rs.stream.color
-align = rs.align(align_to)
-
-# session = ort.InferenceSession("../convert-onnx/model.onnx", providers=['CUDAExecutionProvider'])
-
-# engine = load_normal_engine("../convert-onnx/model.trt")
-
-engine = load_normal_engine("/home/quachmd/Bureau/depth-correction/convert-onnx/model.trt")
-context = engine.create_execution_context()
-
-inputs, outputs, stream = allocate_buffer(engine)
-
-while True:
-    start_time = time.time()
-    frame = pipe.wait_for_frames()
-
-    aligned_frames = align.process(frame)
-
-    depth_frame = aligned_frames.get_depth_frame()
-    color_frame = aligned_frames.get_color_frame()
-
-    depth_image = np.asanyarray(depth_frame.get_data()).astype(np.float32)
-    color_image = np.asanyarray(color_frame.get_data())
-    # outputs = engine.run(inputs)
-    # print(outputs)
-
-    img_np = (color_image / 255.0).astype(np.float32)
-    img_np = np.transpose(img_np, (2, 0, 1))
-    img_np = np.expand_dims(img_np, axis=0)
-
-    depth_np = np.expand_dims(depth_image * depth_scale, axis=0)
-    depth_np = np.expand_dims(depth_np, axis=0)
-
-    num_tokens_np = np.array(1200, dtype=np.int64)
-
-    input = {
-        "image": img_np,
-        # "num_tokens": num_tokens_np,
-        "depth": depth_np
-    }
-
-    for inp in inputs:
-        name = inp["name"]
-        if inp["name"] in input:
-            data = input[inp["name"]]
-            if not data.flags['C_CONTIGUOUS']:
-                data = np.ascontiguousarray(data)
-            np.copyto(inp["host"], data.ravel())
-
-    results = do_inference(context, inputs, outputs, stream)
-
-    depth_out = outputs[0]["host"].reshape(480,848)
-    mask_out = outputs[1]["host"].reshape(480,848)
-
-    binary_mask = mask_out > 0.5
-
-    depth_out = np.where(binary_mask, depth_out, np.inf)
-    depth_pred = depth_to_color_opencv(depth_out)
-
-    depth_m = depth_to_color_opencv(depth_image * depth_scale)
-    # gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-
-    # print(depth_image)
-    # print(color_image)
-    # break
-
-    # Calculate and display FPS
-    end_time = time.time()
-    fps = 1 / (end_time - start_time)
-    cv2.putText(color_image, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-    cv2.imshow('rgb', color_image)
-    cv2.imshow('depth', depth_m)
-    cv2.imshow('pred', depth_pred)
-
-    if cv2.waitKey(1) == ord('q'):
-        np.save("depth.npy", depth_image * depth_scale)
-        cv2.imwrite("depth.png", depth_m)
-        cv2.imwrite("color.png", color_image)
-        break
-
-pipe.stop()
+    # Wait for background threads to safely close
+    capture_thread.join()
+    inference_thread.join()
+    cv2.destroyAllWindows()
