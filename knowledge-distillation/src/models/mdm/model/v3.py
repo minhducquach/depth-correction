@@ -149,7 +149,7 @@ class MDMModel(nn.Module):
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = cls(**model_config)
-        model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny_2.pth'), strict=False)
+        model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny_2.pth', map_location='cpu'), strict=False)
         
         return model
 
@@ -208,7 +208,7 @@ class MDMModel(nn.Module):
         
         init_path = '/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_small.pth'
         if Path(init_path).exists():
-            model.load_state_dict(torch.load(init_path), strict=False)
+            model.load_state_dict(torch.load(init_path, map_location='cpu'), strict=False)
             
         return model
             

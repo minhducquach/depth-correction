@@ -40,7 +40,7 @@ class DatasetWrapper(Dataset):
         return sample
 
 class MyDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size=16, num_workers=8, target_size=(480, 848)):
+    def __init__(self, batch_size=16, num_workers=8, target_size=(588, 784)):
         super().__init__()
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -93,13 +93,13 @@ class MyDataModule(pl.LightningDataModule):
 
 
         # Hyperparams tuning
-        # _, _, d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.7, 0.2, 0.05, 0.05], generator=generator)
-        # _, _, d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.7, 0.2, 0.05, 0.05], generator=generator)
-        # _, _, d3_train, d3_val = torch.utils.data.random_split(d3_raw, [0.7, 0.2, 0.05, 0.05], generator=generator)
+        # _, _, d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.7, 0.25, 0.04, 0.01], generator=generator)
+        # _, _, d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.7, 0.25, 0.04, 0.01], generator=generator)
+        # _, _, d3_train, d3_val = torch.utils.data.random_split(d3_raw, [0.7, 0.25, 0.04, 0.01], generator=generator)
         # # d4_train, d4_val = torch.utils.data.random_split(d4_raw, [0.8, 0.2], generator=generator)
         # # d5_train, d5_val = torch.utils.data.random_split(d5_raw, [0.8, 0.2], generator=generator)
-        # _, _, d7_train, d7_val = torch.utils.data.random_split(d7_raw, [0.7, 0.2, 0.05, 0.05], generator=generator)
-        # _, _, d8_train, d8_val = torch.utils.data.random_split(d8_raw, [0.7, 0.2, 0.05, 0.05], generator=generator)
+        # _, _, d7_train, d7_val = torch.utils.data.random_split(d7_raw, [0.7, 0.25, 0.04, 0.01], generator=generator)
+        # _, _, d8_train, d8_val = torch.utils.data.random_split(d8_raw, [0.7, 0.25, 0.04, 0.01], generator=generator)
         # # d6_train, d6_val, d6_test = torch.utils.data.random_split(dataset6, [0.8, 0.1, 0.1], generator=generator)
 
 

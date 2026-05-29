@@ -109,7 +109,8 @@ class Ibims(torch.utils.data.Dataset):
 if __name__ == '__main__':
     dataset = Ibims()
     len_dataset = len(dataset)
-    color, depth = dataset[100]['color'], dataset[100]['depth']
+    print(len_dataset)
+    color, depth = dataset[80]['color'], dataset[80]['depth']
     print(color.shape, depth.shape)
     plt.figure(figsize=(10, 6))
     plt.subplot(1, 2, 1)

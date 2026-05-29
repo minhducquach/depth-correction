@@ -41,25 +41,26 @@ def train_func(config):
 
     # 4. Setup Logger
     # logger = TensorBoardLogger(save_dir="logs/", name="hypertesting", version="lr=2.3e-4")
-    logger = TensorBoardLogger(save_dir="logs/", name="small_train", version="only_at_neck_concat_mae_correct")
-
+    # logger = TensorBoardLogger(save_dir="logs/", name="small_dev_train", version="l1_grad_mae_more_fix_grad")
+    logger = TensorBoardLogger(save_dir="logs/", name="small", version="l1_grad_mae")
+    
     print("Setting up PyTorch Lightning Trainer...")
     trainer = pl.Trainer(
-        max_epochs=1000,                  
+        max_epochs=100,                  
         accelerator="auto", 
         devices=1,
         precision="bf16-mixed",         
         accumulate_grad_batches=max(1, 1024 // config["batch_size"]),      
         callbacks=[checkpoint_callback, lr_monitor, early_stop],
         logger=logger,
-        log_every_n_steps=10,
+        log_every_n_steps=1,
         # profiler="simple",
         # fast_dev_run=True
     )
 
     trainer.fit(model, datamodule=datamodule)
 
-    trainer.test(model, datamodule=datamodule, ckpt_path="best")
+    trainer.test(model, datamodule=datamodule, ckpt_path="last")
     # print("done")
 
 def main():
@@ -78,9 +79,10 @@ def main():
         'betas_lr': (0.9, 0.999),
         'weight_decay': 0.1,
         'batch_size': 8,
-        'alpha': 0.85,
-        'beta': 0.15,
-        'gamma': 0.1
+        'alpha': 0,
+        'beta': 1,
+        'gamma': 0,
+        'delta': 0.5
     }
 
     train_func(config)

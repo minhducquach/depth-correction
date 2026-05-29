@@ -17,20 +17,22 @@ from utils.metrics import compute_metrics
 
 from pathlib import Path
 
-torch.cuda.empty_cache()
+# torch.cuda.empty_cache()
 
 torch.manual_seed(16)
 
-CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=11-validation_loss=0.0508.ckpt"
+CKPT_PATH = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/checkpoints/mdm-distill-epoch=15-validation_loss=0.5323.ckpt"
+CKPT_PATH_2 = "/home/quachmd/Bureau/depth-correction/mdm-distill-epoch=07-validation_loss=0.0524.ckpt"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 img_path = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/1739893136_240500000.png"
 depth_path = "/home/quachmd/Bureau/depth-correction/knowledge-distillation/playground/1739893136_240500000.npy"
 
 def get_num_tokens():
-    min_tokens, max_tokens = 1200, 3600
-    resolution_level = 0
-    return int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
+    # min_tokens, max_tokens = 1200, 3600
+    # resolution_level = 0
+    # return int(min_tokens + (resolution_level / 9) * (max_tokens - min_tokens))
+    return int(480*848 / 196.0)
 
 def load_depth_map(depth_path, scale=1000.0):
     """
@@ -62,7 +64,7 @@ def load_depth_map(depth_path, scale=1000.0):
 
     return depth_map
 
-def depth_to_color_opencv(depth_map, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURBO):
+def depth_to_color_opencv(depth_map, mask=None, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURBO):
     """
     Convert depth map to color visualization using OpenCV colormap.
 
@@ -76,7 +78,10 @@ def depth_to_color_opencv(depth_map, vmin=0, vmax=30, colormap=cv2.COLORMAP_TURB
         np.ndarray: Colored depth map (H, W, 3) in BGR format
     """
     # Handle invalid values
-    valid_mask = np.isfinite(depth_map) & (depth_map > 0)
+    if mask is None:
+        valid_mask = np.isfinite(depth_map) & (depth_map > 0)
+    else:
+        valid_mask = mask
     depth_clean = depth_map.copy()
     depth_clean[~valid_mask] = 0
 
@@ -194,12 +199,15 @@ def evaluate_metrics(o_model, d_model, dataloader, device):
 
     print(table_d)
 
-def evaluate_visual(o_model, d_model, dataloader, device):
+def evaluate_visual(o_model, d_model, d_model_2, dataloader, device):
     o_model.eval()
     o_model.to(device)
 
     d_model.eval()
     d_model.to(device)
+
+    d_model_2.eval()
+    d_model_2.to(device)
     
     dataset = dataloader.dataset
     len_dataset = len(dataset)
@@ -211,7 +219,7 @@ def evaluate_visual(o_model, d_model, dataloader, device):
     fig = plt.figure(figsize=(15,12))
     rows, cols = len(random_indices), 4
 
-    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+    with torch.autocast(device_type=device, dtype=torch.bfloat16):
         with torch.no_grad():
             for i in range(len(random_indices)):
                 index = random_indices[i].item()
@@ -219,8 +227,11 @@ def evaluate_visual(o_model, d_model, dataloader, device):
                 color = dataset[index]['color'].to(device)
                 depth = dataset[index]['depth'].to(device)
 
-                pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)['depth'].squeeze().float().cpu().numpy()
-                pred_d = d_model.infer(image=color, depth_in=depth, num_tokens=num_tokens)['depth'].squeeze().float().cpu().numpy()
+                pred_o = o_model.infer(image=color, depth_in=depth, num_tokens=2352)
+                pred_s = d_model.infer(image=color, depth_in=depth, num_tokens=2352)
+                
+                pred_d_o, pred_m_o = pred_o['depth'].squeeze().float().cpu().numpy(), pred_o['mask'].squeeze().cpu().numpy()
+                pred_d_s, pred_m_s = pred_s['depth'].squeeze().float().cpu().numpy(), pred_s['mask'].squeeze().cpu().numpy()
                 
                 fig.add_subplot(rows, cols, i * cols + 1)
                 color = color.squeeze(0).cpu().float().numpy()
@@ -238,14 +249,14 @@ def evaluate_visual(o_model, d_model, dataloader, device):
                 if i == 0:
                     plt.title('Raw/Ground truth depth image')
 
-                depth_pred_color = depth_to_color_opencv(pred_d)
+                depth_pred_color = depth_to_color_opencv(pred_d_s, pred_m_s)
                 fig.add_subplot(rows, cols, i * cols + 3)
                 plt.imshow(depth_pred_color)
                 plt.axis(False)
                 if i == 0:
                     plt.title('Student\'s depth')
 
-                depth_ref_color = depth_to_color_opencv(pred_o)
+                depth_ref_color = depth_to_color_opencv(pred_d_o, pred_m_o)
                 fig.add_subplot(rows, cols, i * cols + 4)
                 plt.imshow(depth_ref_color)
                 plt.axis(False)
@@ -320,9 +331,9 @@ def visualize_inter_map(o_model, d_model, device):
             pred_o, o_vit_feats, o_depth_maps, cls_token_o = o_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[5,11,17,23])
             pred_d, d_vit_feats, d_depth_maps, cls_token_d = d_model.forward(color_tensor, 1200, depth_tensor, extract_layers=[2,5,8,11])
 
-            if isinstance(o_vit_feats, list) and isinstance(d_vit_feats, list):
-                o_vit_feats = o_vit_feats[-1]
-                d_vit_feats = d_vit_feats[-1]
+            # if isinstance(o_vit_feats, list) and isinstance(d_vit_feats, list):
+            #     o_vit_feats = o_vit_feats[-1]
+            #     d_vit_feats = d_vit_feats[-1]
 
             # # print(o_vit_feats.shape, d_vit_feats.shape)
 
@@ -331,8 +342,8 @@ def visualize_inter_map(o_model, d_model, device):
             #     ax.axis('off')
 
             # # print(d_vit_feats.cpu().numpy().shape)
-            # # print([m.shape for m in d_depth_maps])
-            # # print([m.shape for m in o_depth_maps])                                                
+            print([m.shape for m in d_depth_maps])
+            print([m.shape for m in o_depth_maps])                                                
             # # print(cls_token_d.cpu().numpy().shape)
 
             # last_depth_map_d = d_depth_maps[-1].squeeze()
@@ -356,37 +367,37 @@ def visualize_inter_map(o_model, d_model, device):
             #     axs[4, i-8].imshow(depth_o)
             #     axs[5, i-8].imshow(depth_o_1)
 
-            fig, axs = plt.subplots(1, 2)
+            # fig, axs = plt.subplots(1, 2)
 
-            B, C_t, H, W = o_vit_feats.shape
-            _, C_s, _, _ = d_vit_feats.shape
+            # B, C_t, H, W = o_vit_feats.shape
+            # _, C_s, _, _ = d_vit_feats.shape
             
-            # 1. PCA Visualization (More than 3 components)
-            n_components = 3
-            feat_t_flat = o_vit_feats[-1].reshape(C_t, -1).permute(1, 0).float().cpu().numpy() # (1196, 1024)
-            feat_s_flat = d_vit_feats[-1].reshape(C_s, -1).permute(1, 0).float().cpu().numpy() # (1196, 192)
+            # # 1. PCA Visualization (More than 3 components)
+            # n_components = 3
+            # feat_t_flat = o_vit_feats[-1].reshape(C_t, -1).permute(1, 0).float().cpu().numpy() # (1196, 1024)
+            # feat_s_flat = d_vit_feats[-1].reshape(C_s, -1).permute(1, 0).float().cpu().numpy() # (1196, 192)
             
-            pca_t = PCA(n_components=n_components).fit_transform(feat_t_flat)
-            pca_s = PCA(n_components=n_components).fit_transform(feat_s_flat)
+            # pca_t = PCA(n_components=n_components).fit_transform(feat_t_flat)
+            # pca_s = PCA(n_components=n_components).fit_transform(feat_s_flat)
 
-            print(pca_t.shape)
+            # print(pca_t.shape)
             
-            # Normalize independently
-            t_min, t_max = pca_t.min(axis=0), pca_t.max(axis=0)
-            s_min, s_max = pca_s.min(axis=0), pca_s.max(axis=0)
-            pca_t = (pca_t - t_min) / (t_max - t_min + 1e-8)
-            pca_s = (pca_s - s_min) / (s_max - s_min + 1e-8)
+            # # Normalize independently
+            # t_min, t_max = pca_t.min(axis=0), pca_t.max(axis=0)
+            # s_min, s_max = pca_s.min(axis=0), pca_s.max(axis=0)
+            # pca_t = (pca_t - t_min) / (t_max - t_min + 1e-8)
+            # pca_s = (pca_s - s_min) / (s_max - s_min + 1e-8)
             
-            pca_img_t = pca_t.reshape(H, W, n_components)
-            pca_img_s = pca_s.reshape(H, W, n_components)
+            # pca_img_t = pca_t.reshape(H, W, n_components)
+            # pca_img_s = pca_s.reshape(H, W, n_components)
 
-            axs[0].imshow(pca_img_t)
-            axs[0].set_title("Teacher ViT Features (PCA - 1024D)")
-            axs[0].axis('off')
+            # axs[0].imshow(pca_img_t)
+            # axs[0].set_title("Teacher ViT Features (PCA - 1024D)")
+            # axs[0].axis('off')
             
-            axs[1].imshow(pca_img_s)
-            axs[1].set_title("Student ViT Features (PCA - 192D)")
-            axs[1].axis('off')
+            # axs[1].imshow(pca_img_s)
+            # axs[1].set_title("Student ViT Features (PCA - 192D)")
+            # axs[1].axis('off')
             
             # # Plotting individual components
             # fig_pca, axs_pca = plt.subplots(n_components, 2, figsize=(10, 3 * n_components))
@@ -429,8 +440,8 @@ def visualize_inter_map(o_model, d_model, device):
             #     # axs[1].set_title("Student AT")
             #     axs[i,1].axis('off')
                             
-            plt.tight_layout()
-            plt.show()
+            # plt.tight_layout()
+            # plt.show()
 
 def evaluate_mde(color_path, model, device):
     img = cv2.imread(color_path)
@@ -456,13 +467,13 @@ def evaluate_mde(color_path, model, device):
 def evaluate_single_img(color_path, depth_path, model, device):
     img = cv2.imread(color_path)
     img = cv2.resize(img, (848, 480))
-    img_tensor = torch.tensor(img / 255.0, dtype=torch.float32, device=device).permute(2,0,1)[None]
+    img_tensor = torch.tensor(img / 255.0, dtype=torch.float32, device=device).permute(2,0,1)[None].to(device)
 
     # depth_np = cv2.imread(depth_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) / 100.0
     depth_np = load_depth_map(depth_path)
     depth_np = cv2.resize(depth_np, (848, 480), interpolation=cv2.INTER_NEAREST)
 
-    depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None]
+    depth_tensor = torch.tensor(depth_np, dtype=torch.float32, device=device)[None].to(device)
 
     with torch.autocast(device_type=device, dtype=torch.bfloat16):
         with torch.no_grad():
@@ -490,14 +501,19 @@ if __name__ == "__main__":
     original_model = MDMModel.from_pretrained().to(device)
     original_model.eval()
 
-    distilled_model = MDMModel.from_pretrained_config_small()
+    distilled_model = MDMModel.from_pretrained_config_small().to(device)
     distilled_model.load_state_dict(extract_weights_from_ckpt(ckpt))
     distilled_model = distilled_model.to(device)
     distilled_model.eval()
 
+    ckpt2 = torch.load(CKPT_PATH_2, map_location=device)
+    distilled_model2 = MDMModel.from_pretrained_config_small().to(device)
+    distilled_model2.load_state_dict(extract_weights_from_ckpt(ckpt2))
+    distilled_model2 = distilled_model2.to(device)
+    distilled_model2.eval()
     # evaluate_metrics(original_model, distilled_model, test_dataset, device)
 
-    evaluate_visual(original_model, distilled_model, test_dataset, device)
+    evaluate_visual(original_model, distilled_model, distilled_model2, test_dataset, device)
 
     # evaluate_time_complexity(original_model, distilled_model, test_dataset, device)
 

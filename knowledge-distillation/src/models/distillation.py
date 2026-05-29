@@ -28,7 +28,7 @@ class DistillationModel(pl.LightningModule):
         # self.student.depth_head.enable_gradient_checkpointing()
         # self.student.mask_head.enable_gradient_checkpointing()
 
-        self.loss_fn = Criterion(alpha=config["alpha"], beta=config["beta"], gamma=config["gamma"])
+        self.loss_fn = Criterion(alpha=config["alpha"], beta=config["beta"], gamma=config["gamma"], delta=config["delta"])
         # self.loss_fn.compile(mode='default')
 
         self.teacher.eval()
@@ -129,15 +129,18 @@ class DistillationModel(pl.LightningModule):
             
         return depth
 
-    def get_num_tokens(self):
-        min_tokens, max_tokens = 1200, 3600
-        resolution_level = 0
-        return int(min_tokens + (resolution_level / 9.0) * (max_tokens - min_tokens))
+    def get_num_tokens(self, img_height, img_width):
+        # min_tokens, max_tokens = 1200, 3600
+        # resolution_level = 0
+        # return int(min_tokens + (resolution_level / 9.0) * (max_tokens - min_tokens))
+        return int(img_height * img_width / 196.0)
     
     def training_step(self, batch, batch_idx):
         color = batch['color']
         depth_in = batch['depth']
-        num_tokens = self.get_num_tokens()
+
+        h, w = color.shape[2], color.shape[3]
+        num_tokens = self.get_num_tokens(h, w)
 
         raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(2,5,8,11))
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
@@ -148,16 +151,22 @@ class DistillationModel(pl.LightningModule):
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
-        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
+        # loss, dl, dssiml, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
+        loss, dl, gradl, ml = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         # print('Train loss:', loss)
 
         self.log("train_loss", loss)
+        self.log("depth_loss", dl)
+        # self.log("dssim_loss", dssiml)
+        self.log("mask_loss", ml)
+        self.log("grad_loss", gradl)
         return loss
     
     def validation_step(self, batch, batch_idx):
         color = batch['color']
         depth_in = batch['depth']
-        num_tokens = self.get_num_tokens()
+        h, w = color.shape[2], color.shape[3]
+        num_tokens = self.get_num_tokens(h, w)
 
         raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(2,5,8,11))
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
@@ -168,8 +177,13 @@ class DistillationModel(pl.LightningModule):
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
-        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
+        # loss, dl, dssiml, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
+        loss, dl, gradl, ml = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         self.log("validation_loss", loss)
+        self.log("depth_loss_val", dl)
+        # self.log("dssim_loss_val", dssiml)
+        self.log("mask_loss_val", ml)
+        self.log("grad_loss_val", gradl)
 
         # metrics_dict = compute_metrics(depth_s, depth_t) 
         
@@ -188,7 +202,8 @@ class DistillationModel(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         color = batch['color']
         depth_in = batch['depth']
-        num_tokens = self.get_num_tokens()
+        h, w = color.shape[2], color.shape[3]
+        num_tokens = self.get_num_tokens(h, w)
 
         raw_pred_s, intermediate_feat_s, feat_neck_s, cls_token_s = self(image=color, depth=depth_in, num_tokens=num_tokens, extract_layers=(2,5,8,11))
         # depth_s = self.extract_and_mask_depth(raw_pred_s, apply_mask=True)
@@ -199,9 +214,13 @@ class DistillationModel(pl.LightningModule):
             # depth_t = self.extract_and_mask_depth(raw_pred_t, apply_mask=True)
             depth_t, mask_t = raw_pred_t['depth_reg'], raw_pred_t['mask']
 
-        loss = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
+        # loss, dl, dssiml, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
+        loss, dl, gradl, ml = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         self.log("test_loss", loss)
-
+        self.log("depth_loss_test", dl)
+        # self.log("dssim_loss_test", dssiml)
+        self.log("mask_loss_test", ml)
+        self.log("grad_loss_test", gradl)
         # metrics_dict = compute_metrics(depth_s, depth_t)
 
         # for metric_name, metric_value in metrics_dict.items():

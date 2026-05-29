@@ -89,7 +89,7 @@ class MDMModel(nn.Module):
                 filename="model.pt",
                 **hf_kwargs
             )
-        checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=True)
+        checkpoint = torch.load(checkpoint_path, weights_only=True)
         
         model_config = checkpoint['model_config']
         if model_kwargs is not None:
