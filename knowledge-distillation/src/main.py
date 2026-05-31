@@ -31,7 +31,7 @@ def train_func(config):
     )
 
     # Logs the learning rate to TensorBoard
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    # lr_monitor = LearningRateMonitor(logging_interval='step')
 
     early_stop = EarlyStopping(
         monitor="validation_loss",
@@ -39,10 +39,10 @@ def train_func(config):
         mode="min"
     )
 
-    # 4. Setup Logger
+    # Setup Logger
     # logger = TensorBoardLogger(save_dir="logs/", name="hypertesting", version="lr=2.3e-4")
     # logger = TensorBoardLogger(save_dir="logs/", name="small_dev_train", version="l1_grad_mae_more_fix_grad")
-    logger = TensorBoardLogger(save_dir="logs/", name="small", version="l1_grad_mae")
+    # logger = TensorBoardLogger(save_dir="logs/", name="small_tiny", version="l1_grad_at")
     
     print("Setting up PyTorch Lightning Trainer...")
     trainer = pl.Trainer(
@@ -51,16 +51,16 @@ def train_func(config):
         devices=1,
         precision="bf16-mixed",         
         accumulate_grad_batches=max(1, 1024 // config["batch_size"]),      
-        callbacks=[checkpoint_callback, lr_monitor, early_stop],
-        logger=logger,
-        log_every_n_steps=1,
+        callbacks=[checkpoint_callback, early_stop],
+        # logger=logger,
+        # log_every_n_steps=1,
         # profiler="simple",
         # fast_dev_run=True
     )
 
     trainer.fit(model, datamodule=datamodule)
 
-    trainer.test(model, datamodule=datamodule, ckpt_path="last")
+    trainer.test(model, datamodule=datamodule, ckpt_path="best")
     # print("done")
 
 def main():
@@ -74,14 +74,14 @@ def main():
     pl.seed_everything(42, workers=True)
 
     config = {
-        'learning_rate_backbone': 2.6e-5,
+        'learning_rate_backbone': 2.6e-4,
         'learning_rate': 2.6e-4,
         'betas_lr': (0.9, 0.999),
         'weight_decay': 0.1,
-        'batch_size': 8,
+        'batch_size': 16,
         'alpha': 0,
         'beta': 1,
-        'gamma': 0,
+        'gamma': 0.1,
         'delta': 0.5
     }
 

@@ -149,7 +149,7 @@ class MDMModel(nn.Module):
         if model_kwargs is not None:
             model_config.update(model_kwargs)
         model = cls(**model_config)
-        model.load_state_dict(torch.load('/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_tiny_2.pth'), strict=False)
+        model.load_state_dict(torch.load('/content/drive/MyDrive/depth-correction/knowledge-distillation/src/models/weights/init_tiny_2.pth'), strict=False)
         
         return model
 
@@ -206,7 +206,7 @@ class MDMModel(nn.Module):
         
         model.init_weights()
         
-        init_path = '/home/quachmd/Bureau/depth-correction/knowledge-distillation/src/models/weights/init_small.pth'
+        init_path = '/content/drive/MyDrive/depth-correction/knowledge-distillation/src/models/weights/init_small.pth'
         if Path(init_path).exists():
             model.load_state_dict(torch.load(init_path), strict=False)
             
@@ -423,3 +423,4 @@ class MDMModel(nn.Module):
             features, cls_token = self.forward_feat(image, num_tokens=num_tokens, depth=depth_in, **kwargs)
         
         return features, cls_token
+

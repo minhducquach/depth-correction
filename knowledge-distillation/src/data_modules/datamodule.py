@@ -12,11 +12,20 @@ class DatasetWrapper(Dataset):
         self.target_size = target_size
         self.is_train = is_train
         
-        # Perform ONLY the structural resize on CPU so images can be collated into batches.
-        # Heavy augmentations are moved to the GPU in the LightningModule!
-        self.transform = A.Compose([
-            A.Resize(height=target_size[0], width=target_size[1], p=1.0)
-        ], additional_targets={'depth': 'mask'})
+        if self.is_train:
+            self.transform = A.Compose([
+                A.Resize(height=target_size[0], width=target_size[1], p=1.0),
+                A.RandomResizedCrop(size=(target_size[0], target_size[1]), scale=(0.6, 1.0), p=1.0),
+                A.HorizontalFlip(),
+                A.ColorJitter(),
+                A.ImageCompression(),
+                A.MotionBlur(),
+                A.ShotNoise()
+            ], additional_targets={'depth': 'mask'})
+        else:
+            self.transform = A.Compose([
+                A.Resize(height=target_size[0], width=target_size[1], p=1.0)
+            ], additional_targets={'depth': 'mask'})
 
     def __len__(self):
         return len(self.dataset)
@@ -50,45 +59,46 @@ class MyDataModule(pl.LightningDataModule):
         self.test_datasets = []
 
     def _test_len(self):
-        d1_raw = ARKitScenesDataset()
-        d2_raw = FakingDepth()
+        # d1_raw = ARKitScenesDataset()
+        # d2_raw = FakingDepth()
         d3_raw = NYUv2()
         # d4_raw = TartanAir()
         # d5_raw = VirtualKitti()
-        d6_raw = DarkNav()
-        d7_raw = Seungsang()
-        d8_raw = Lingbot()
+        # d6_raw = DarkNav()
+        # d7_raw = Seungsang()
+        # d8_raw = Lingbot()
 
-        print("Arkit len:", len(d1_raw))
-        print("Faking len:", len(d2_raw))
+        # print("Arkit len:", len(d1_raw))
+        # print("Faking len:", len(d2_raw))
         print("NYU len:", len(d3_raw))
         # print("Tartan len:", len(d4_raw))
         # print("KITTI len:", len(d5_raw))
-        print("DarkNav len:", len(d6_raw))
-        print("Seungsang len:", len(d7_raw))
-        print("Lingbot len:", len(d8_raw))
+        # print("DarkNav len:", len(d6_raw))
+        # print("Seungsang len:", len(d7_raw))
+        # print("Lingbot len:", len(d8_raw))
 
-        print('Total: ', len(d1_raw) + len(d2_raw) + len(d3_raw) + len(d6_raw) + len(d7_raw) + len(d8_raw))
+        # print('Total: ', len(d1_raw) + len(d2_raw) + len(d3_raw) + len(d6_raw) + len(d7_raw) + len(d8_raw))
 
     def setup(self, stage=None):
         generator = torch.Generator().manual_seed(42)
 
-        d1_raw = ARKitScenesDataset()
-        d2_raw = FakingDepth()
+        # d1_raw = ARKitScenesDataset()
+        # d2_raw = FakingDepth()
         d3_raw = NYUv2()
         # d4_raw = TartanAir()
         # d5_raw = VirtualKitti()
-        d6_raw = DarkNav()
-        d7_raw = Seungsang()
-        d8_raw = Lingbot()
+        # d6_raw = DarkNav()
+        # d7_raw = Seungsang()
+        # d8_raw = Lingbot()
+        # print("NYU len:", len(d3_raw))
 
-        d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.8, 0.2], generator=generator)
-        d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.8, 0.2], generator=generator)
-        d3_train, d3_val = torch.utils.data.random_split(d3_raw, [0.8, 0.2], generator=generator)
+        # d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.8, 0.2], generator=generator)
+        # d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.8, 0.2], generator=generator)
+        d3_train, d3_val, d3_test = torch.utils.data.random_split(d3_raw, [0.8, 0.1, 0.1], generator=generator)
         # d4_train, d4_val = torch.utils.data.random_split(d4_raw, [0.8, 0.2], generator=generator)
         # d5_train, d5_val = torch.utils.data.random_split(d5_raw, [0.8, 0.2], generator=generator)
-        d7_train, d7_val = torch.utils.data.random_split(d7_raw, [0.8, 0.2], generator=generator)
-        d8_train, d8_val = torch.utils.data.random_split(d8_raw, [0.8, 0.2], generator=generator)
+        # d7_train, d7_val = torch.utils.data.random_split(d7_raw, [0.8, 0.2], generator=generator)
+        # d8_train, d8_val = torch.utils.data.random_split(d8_raw, [0.8, 0.2], generator=generator)
         # d6_train, d6_val, d6_test = torch.utils.data.random_split(dataset6, [0.8, 0.1, 0.1], generator=generator)
 
 
@@ -102,17 +112,16 @@ class MyDataModule(pl.LightningDataModule):
         # _, _, d8_train, d8_val = torch.utils.data.random_split(d8_raw, [0.7, 0.25, 0.04, 0.01], generator=generator)
         # # d6_train, d6_val, d6_test = torch.utils.data.random_split(dataset6, [0.8, 0.1, 0.1], generator=generator)
 
-
         self.train_datasets = [
             DatasetWrapper(d, target_size=self.target_size, is_train=True)
-            for d in [d1_train, d2_train, d3_train, d7_train, d8_train]
+            for d in [d3_train]
         ]
         # self.val_datasets = [d1_val, d2_val, d3_val, d4_val, d5_val]
         self.val_datasets = [
             DatasetWrapper(d, target_size=self.target_size, is_train=False)
-            for d in [d1_val, d2_val, d3_val, d7_val, d8_val]
+            for d in [d3_val]
         ]
-        self.test_datasets = [DatasetWrapper(d6_raw, target_size=self.target_size, is_train=False)]
+        self.test_datasets = [DatasetWrapper(d3_test, target_size=self.target_size, is_train=False)]
         # self.test_datasets = self.val_datasets
 
     def train_dataloader(self):
@@ -131,3 +140,4 @@ class MyDataModule(pl.LightningDataModule):
 if __name__ == "__main__":
     test = MyDataModule()
     test._test_len()
+

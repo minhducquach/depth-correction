@@ -4,6 +4,7 @@ import torch.utils.data
 import os.path
 import glob
 import numpy as np
+import pandas as pd # Added import for pandas
 
 from collections import namedtuple
 # from PIL import Image
@@ -16,7 +17,7 @@ import matplotlib.pyplot as plt
 
 # MAX_DEPTH = 655.35
 
-BASE_DIR = "/home/quachmd/Bureau/depth-correction/datasets/nyu/nyuv2_raw_dataset_extractor/data/extracted"
+BASE_DIR = "/content/nyu_data" # Corrected BASE_DIR
 
 def preprocess_input_image(image_path):
     """
@@ -71,7 +72,7 @@ def load_depth_map(depth_path, scale=1000.0):
         raise ValueError(f"Failed to read depth map: {depth_path}")
 
     # Convert to meters
-    depth_map = depth_map.astype(np.float32) / scale                                                    
+    depth_map = depth_map.astype(np.float32) / scale
 
     # Replace invalid values with 0
     depth_map = np.nan_to_num(depth_map, nan=0.0, posinf=0.0, neginf=0.0)
@@ -83,30 +84,36 @@ class NYUv2(torch.utils.data.Dataset):
         self.color_files = []
         self.depth_files = []
 
-        description_paths = Path(dir).glob("*.txt")
-        
-        for description in description_paths:
-            with open(description, "r") as desc:
-                for line in desc:
-                    parts = line.strip().split(" ")
-                    if len(parts) >= 2:
-                        color_path = os.path.join(dir, parts[1])
-                        depth_path = os.path.join(dir, parts[0])
-                        if os.path.isfile(color_path) and os.path.isfile(depth_path):
-                            self.color_files.append(color_path)
-                            self.depth_files.append(depth_path)
+        description_csv_path = "/content/nyu_data/data/nyu2_train.csv"
+
+        # Load the CSV using pandas
+        # Assuming the CSV has two columns: [color_image_path, depth_image_path] and no header
+        df = pd.read_csv(description_csv_path, header=None)
+
+        for index, row in df.iterrows():
+            # row[0] is the color image path (e.g., 'data/nyu2_train/living_room_0038_out/37.jpg')
+            # row[1] is the depth image path (e.g., 'data/nyu2_train/living_room_0038_out/37.png')
+            color_relative_path = row[0]
+            depth_relative_path = row[1]
+
+            color_full_path = os.path.join(dir, color_relative_path)
+            depth_full_path = os.path.join(dir, depth_relative_path)
+
+            if os.path.isfile(color_full_path) and os.path.isfile(depth_full_path):
+                self.color_files.append(color_full_path)
+                self.depth_files.append(depth_full_path)
 
         # print(self.color_files)
 
     def __len__(self):
         return len(self.color_files)
-    
+
     def __getitem__(self, index):
         color_path = self.color_files[index]
         depth_path = self.depth_files[index]
-        
+
         color = preprocess_input_image(color_path)
-        depth = load_depth_map(depth_path, scale=100.0)
+        depth = load_depth_map(depth_path, scale=1000.0)
 
         return {
             'color': color,

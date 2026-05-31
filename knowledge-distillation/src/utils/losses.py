@@ -106,7 +106,7 @@ class Criterion(nn.Module):
         return F.normalize(x.pow(2).mean(1).view(x.size(0), -1))
 
     def at_loss(self, x, y):
-        return (self.at(x) - self.at(y)).pow(2).mean()
+        return (self.at(x) - self.at(y)).pow(2).sum(dim=1).mean()
 
     def forward(self, pred_S, pred_T, pred_mask_S, pred_mask_T, features_T=None, features_S=None, inter_T=None, inter_S=None):
         t_tensor = pred_T.detach()
@@ -145,9 +145,13 @@ class Criterion(nn.Module):
         
         avg_mask_loss = mask_loss.mean()
 
-        total_loss = avg_depth_loss + avg_mask_loss + grad_loss
+        if features_T is not None and features_S is not None:
+            at_loss = self.gamma * sum(self.at_loss(features_T[i], features_S[i]) for i in range(len(features_S)))
+            # print(at_loss)
 
-        return total_loss, avg_depth_loss, grad_loss, avg_mask_loss
+        total_loss = avg_depth_loss + avg_mask_loss + grad_loss + at_loss
+
+        return total_loss, avg_depth_loss, grad_loss, avg_mask_loss, at_loss
 
         # L1 version - AT - DSSIM
         # depth_loss = self.beta * self.l1_loss(s_tensor, t_tensor)
@@ -170,3 +174,4 @@ class Criterion(nn.Module):
         #     total_loss += self.gamma * sum_at_inter
 
         # return total_loss, depth_loss.mean(), dssim_loss.mean(), mask_loss.mean(), at_loss
+
