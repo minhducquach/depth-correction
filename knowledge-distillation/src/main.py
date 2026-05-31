@@ -78,7 +78,7 @@ def main():
         'learning_rate': 2.6e-4,
         'betas_lr': (0.9, 0.999),
         'weight_decay': 0.1,
-        'batch_size': 24,
+        'batch_size': 20,
         'alpha': 0,
         'beta': 1,
         'gamma': 0.1,
