@@ -94,7 +94,7 @@ class MyDataModule(pl.LightningDataModule):
 
         # d1_train, d1_val = torch.utils.data.random_split(d1_raw, [0.8, 0.2], generator=generator)
         # d2_train, d2_val = torch.utils.data.random_split(d2_raw, [0.8, 0.2], generator=generator)
-        d3_train, d3_val, d3_test = torch.utils.data.random_split(d3_raw, [0.8, 0.1, 0.1], generator=generator)
+        d3_train, d3_val, d3_test = torch.utils.data.random_split(d3_raw, [0.05, 0.05, 0.05], generator=generator)
         # d4_train, d4_val = torch.utils.data.random_split(d4_raw, [0.8, 0.2], generator=generator)
         # d5_train, d5_val = torch.utils.data.random_split(d5_raw, [0.8, 0.2], generator=generator)
         # d7_train, d7_val = torch.utils.data.random_split(d7_raw, [0.8, 0.2], generator=generator)

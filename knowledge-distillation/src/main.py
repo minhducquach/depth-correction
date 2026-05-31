@@ -33,11 +33,11 @@ def train_func(config):
     # Logs the learning rate to TensorBoard
     # lr_monitor = LearningRateMonitor(logging_interval='step')
 
-    early_stop = EarlyStopping(
-        monitor="validation_loss",
-        patience=10,
-        mode="min"
-    )
+    # early_stop = EarlyStopping(
+    #     monitor="validation_loss",
+    #     patience=10,
+    #     mode="min"
+    # )
 
     # Setup Logger
     # logger = TensorBoardLogger(save_dir="logs/", name="hypertesting", version="lr=2.3e-4")
@@ -51,7 +51,7 @@ def train_func(config):
         devices=1,
         precision="bf16-mixed",         
         accumulate_grad_batches=max(1, 1024 // config["batch_size"]),      
-        callbacks=[checkpoint_callback, early_stop],
+        callbacks=[checkpoint_callback],
         # logger=logger,
         # log_every_n_steps=1,
         # profiler="simple",
