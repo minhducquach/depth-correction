@@ -170,7 +170,7 @@ class DistillationModel(pl.LightningModule):
         loss, dl, gradl, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         # print('Train loss:', loss)
 
-        # self.log("train_loss", loss)
+        self.log("train_loss", loss)
         # self.log("depth_loss", dl)
         # self.log("at_loss", atl)
         # self.log("mask_loss", ml)
@@ -194,7 +194,7 @@ class DistillationModel(pl.LightningModule):
 
         # loss, dl, dssiml, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         loss, dl, gradl, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
-        # self.log("validation_loss", loss)
+        self.log("validation_loss", loss)
         # self.log("depth_loss_val", dl)
         # self.log("at_loss_val", atl)
         # self.log("mask_loss_val", ml)
@@ -231,7 +231,7 @@ class DistillationModel(pl.LightningModule):
 
         # loss, dl, dssiml, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
         loss, dl, gradl, ml, atl = self.loss_fn(depth_s, depth_t, mask_s, mask_t, feat_neck_t, feat_neck_s, intermediate_feat_t, intermediate_feat_s)
-        # self.log("test_loss", loss)
+        self.log("test_loss", loss)
         # self.log("depth_loss_test", dl)
         # self.log("at_loss_test", atl)
         # self.log("mask_loss_test", ml)
