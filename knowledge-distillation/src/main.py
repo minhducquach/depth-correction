@@ -42,7 +42,7 @@ def train_func(config):
     # 4. Setup Logger
     # logger = TensorBoardLogger(save_dir="logs/", name="hypertesting", version="lr=2.3e-4")
     # logger = TensorBoardLogger(save_dir="logs/", name="small_dev_train", version="l1_grad_mae_more_fix_grad")
-    logger = TensorBoardLogger(save_dir="logs/", name="small", version="l1_grad_mae")
+    logger = TensorBoardLogger(save_dir="logs/", name="small", version="l1_grad_mae_aug")
     
     print("Setting up PyTorch Lightning Trainer...")
     trainer = pl.Trainer(
@@ -60,7 +60,7 @@ def train_func(config):
 
     trainer.fit(model, datamodule=datamodule)
 
-    trainer.test(model, datamodule=datamodule, ckpt_path="last")
+    trainer.test(model, datamodule=datamodule, ckpt_path="best")
     # print("done")
 
 def main():

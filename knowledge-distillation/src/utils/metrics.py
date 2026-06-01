@@ -1,14 +1,25 @@
 import torch
 
-def compute_metrics(pred, gt):
+def compute_metrics(pred, mask=None, gt=None):
     valid_mask_gt = (gt > 0) & torch.isfinite(gt)
-    valid_mask_pred = (pred > 0) & torch.isfinite(pred)
 
-    pred_valid = torch.where(valid_mask_pred, pred, 0)
-    gt_valid = torch.where(valid_mask_gt, gt, 0)
+    if mask is None:
+        valid_mask_pred = (pred > 0) & torch.isfinite(pred)
+    else:
+        valid_mask_pred = mask.bool()
 
-    pred_valid = torch.clamp(pred_valid, min=1e-5)
-    gt_valid = torch.clamp(gt_valid, min=1e-5)
+    pred = torch.where(valid_mask_pred, pred, 0.0)
+
+    if not valid_mask_gt.any():
+        return {
+            'mae': 0.0,
+            'rmse': 0.0,
+            'abs_rel': 0.0,
+            'delta_1': 0.0 
+        }
+
+    pred_valid = torch.clamp(pred[valid_mask_gt], min=1e-5)
+    gt_valid = torch.clamp(gt[valid_mask_gt], min=1e-5)
 
     diff = pred_valid - gt_valid
     mae = torch.mean(torch.abs(diff))

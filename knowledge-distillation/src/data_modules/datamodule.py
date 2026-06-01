@@ -12,11 +12,20 @@ class DatasetWrapper(Dataset):
         self.target_size = target_size
         self.is_train = is_train
         
-        # Perform ONLY the structural resize on CPU so images can be collated into batches.
-        # Heavy augmentations are moved to the GPU in the LightningModule!
-        self.transform = A.Compose([
-            A.Resize(height=target_size[0], width=target_size[1], p=1.0)
-        ], additional_targets={'depth': 'mask'})
+        if self.is_train:
+            self.transform = A.Compose([
+                A.Resize(height=target_size[0], width=target_size[1], p=1.0),
+                A.RandomResizedCrop(size=(target_size[0], target_size[1]), scale=(0.6, 1.0), p=1.0),
+                A.HorizontalFlip(),
+                A.ColorJitter(),
+                A.ImageCompression(),
+                A.MotionBlur(),
+                A.ShotNoise()
+            ], additional_targets={'depth': 'mask'})
+        else:
+            self.transform = A.Compose([
+                A.Resize(height=target_size[0], width=target_size[1], p=1.0)
+            ], additional_targets={'depth': 'mask'})
 
     def __len__(self):
         return len(self.dataset)

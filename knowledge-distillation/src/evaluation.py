@@ -166,14 +166,14 @@ def evaluate_metrics(o_model, d_model, dataloader, device):
                 for i in range(batch_size):
                     gt_i = depth[i]
                     
-                    pred_o_depth_i = pred_o['depth'][i]
-                    pred_d_depth_i = pred_d['depth'][i]
+                    pred_o_depth_i, pred_o_mask_i = pred_o['depth'][i], pred_o['mask'][i]
+                    pred_d_depth_i, pred_d_mask_i = pred_d['depth'][i], pred_d['mask'][i]
 
-                    metrics_o = compute_metrics(pred_o_depth_i, gt_i)
+                    metrics_o = compute_metrics(pred_o_depth_i, pred_o_mask_i, gt_i)
                     for k in total_metrics_o.keys():
                         total_metrics_o[k] += metrics_o[k]
 
-                    metrics_d = compute_metrics(pred_d_depth_i, gt_i)
+                    metrics_d = compute_metrics(pred_d_depth_i, pred_d_mask_i, gt_i)
                     for k in total_metrics_d.keys():
                         total_metrics_d[k] += metrics_d[k]
 
